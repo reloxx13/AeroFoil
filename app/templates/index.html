@@ -204,8 +204,15 @@
         </div>
         <!-- Card size slider -->
         <div class="col-auto">
-            <!-- <label for="cardSizeRange" class="form-label">Card Size</label> -->
-            <input type="range" class="form-range" min="1" max="5" step="1" id="cardSizeRange">
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="cardSizeDecrease" aria-label="Smaller tiles">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <input type="range" class="form-range mb-0" min="1" max="5" step="1" id="cardSizeRange">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="cardSizeIncrease" aria-label="Larger tiles">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
         </div>
         <div class="col-auto d-none" id="activeFiltersBar"></div>
     </div>
@@ -610,6 +617,26 @@
         return (game && (game.title_id_name || game.name || game.title_id || game.app_id)) || '';
     }
 
+    function getLibraryDisplayTitle(game) {
+        const appType = String((game && game.app_type) || '').toUpperCase();
+        const baseTitle = String((game && (game.title_id_name || game.title_id || game.app_id)) || '').trim();
+        const contentTitle = String((game && (game.name || game.app_id || game.title_id)) || '').trim();
+        if (appType === 'DLC' && baseTitle && contentTitle && contentTitle !== baseTitle) {
+            return `${baseTitle} | ${contentTitle}`;
+        }
+        return baseTitle || contentTitle;
+    }
+
+    function getLibraryDisplaySubtitle(game) {
+        const appType = String((game && game.app_type) || '').toUpperCase();
+        const baseTitle = String((game && (game.title_id_name || game.title_id || game.app_id)) || '').trim();
+        const contentTitle = String((game && (game.name || game.app_id || game.title_id)) || '').trim();
+        if (appType === 'DLC' && baseTitle && contentTitle && contentTitle !== baseTitle) {
+            return `${game.title_id || ''}`.trim();
+        }
+        return `${game.title_id || ''}`.trim();
+    }
+
     function getGameGenre(game) {
         return (game && (game.genre || game.category)) || '';
     }
@@ -679,7 +706,7 @@
             btn.setAttribute('data-bs-app-type', game.app_type);
 
             const iconSrc = game.title_id ? `/api/shop/icon/${game.title_id}` : '';
-            const title = escapeHtml(getGameTitle(game));
+            const title = escapeHtml(getLibraryDisplayTitle(game));
             const genre = escapeHtml(getPrimaryGenre(game));
             btn.innerHTML = `
                 <div class="discover-tile-body">
@@ -792,14 +819,15 @@
 
             const cardOverlay = $('<div class="card-img-overlay game-info"></div>');
 
-            const title = $('<h5 class="card-title game-title"></h5>').text(game.title_id_name || game.name);
+            const fullTitle = getLibraryDisplayTitle(game);
+            const title = $('<h5 class="card-title game-title"></h5>')
+                .text(fullTitle)
+                .attr('data-bs-toggle', 'tooltip')
+                .attr('data-bs-placement', 'top')
+                .attr('data-bs-title', fullTitle);
             cardOverlay.append(title);
 
             const description = $('<p class="card-text game-description"></p>');
-            if (game.app_type === 'DLC') {
-                const small = $('<small></small>').text(`${game.name} | `);
-                description.append(small);
-            }
             const small = $('<small></small>').text(game.id);
             description.append(small);
             cardOverlay.append(description);
@@ -827,7 +855,7 @@
                 );
             }
 
-            if (game.has_latest_version !== undefined) {
+            if (game.has_latest_version !== undefined && game.app_type !== 'DLC') {
                 const versionBadge = $('<span class="badge rounded-pill game-tag version-tag"></span>')
                     .addClass(`text-bg-${game.has_latest_version ? 'success' : 'warning'}`)
                     .html(`<i class="bi ${game.has_latest_version ? 'bi-check-circle-fill' : 'bi-arrow-down-circle'}"></i>`);
@@ -863,6 +891,12 @@
                 const dlcBadge = $('<span class="badge rounded-pill game-tag"></span>').addClass(`text-bg-${game.has_all_dlcs ? 'success' : 'warning'}`).html('<i class="bi bi-box-seam-fill"></i>');
                 dlcBadge.attr('title', 'DLC');
                 statusIcons.append(dlcBadge);
+            }
+            if (game.owned !== undefined && !game.owned) {
+                statusIcons.append(
+                    $('<span class="badge rounded-pill game-tag text-bg-warning"></span>')
+                        .text('Missing')
+                );
             }
 
             if (statusIcons.children().length) {
@@ -914,14 +948,15 @@
                 .attr('data-bs-app-type', game.app_type);
             const cacheIconSrc = game.title_id ? `/api/shop/icon/${game.title_id}?size=web` : '';
             const iconFallback = '/static/placeholder-icon.svg';
-            const title = escapeHtml(getGameTitle(game));
+            const fullTitle = getLibraryDisplayTitle(game);
+            const title = escapeHtml(fullTitle);
             const parts = splitGenres(getGameGenre(game));
             const genre = escapeHtml(parts.length > 3 ? `${parts.slice(0, 3).join(', ')}...` : parts.join(', '));
 
             iconBtn.html(`
                 <div class="discover-tile-body">
                     <img class="library-icon-img" src="${cacheIconSrc || iconFallback}" alt="">
-                    <div class="discover-tile-title">${title}</div>
+                    <div class="discover-tile-title" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="${title}">${title}</div>
                     <div class="discover-tile-subtitle">${genre}</div>
                 </div>
             `);
@@ -993,14 +1028,14 @@
 
         const tbody = table.find('tbody');
         paginatedGames.forEach(game => {
-            const title = game.title_id_name || game.name || game.title_id || game.app_id;
-            const subtitle = `${game.title_id || ''}`.trim();
+            const title = getLibraryDisplayTitle(game);
+            const subtitle = getLibraryDisplaySubtitle(game);
             const versionText = getDisplayVersion(game);
             const statusBadges = [];
             if (game.owned !== undefined) {
-                statusBadges.push(`<span class="badge text-bg-${game.owned ? 'success' : 'warning'}">Owned</span>`);
+                statusBadges.push(`<span class="badge text-bg-${game.owned ? 'success' : 'warning'}">${game.owned ? 'Owned' : 'Missing'}</span>`);
             }
-            if (game.has_latest_version !== undefined) {
+            if (game.has_latest_version !== undefined && game.app_type !== 'DLC') {
                 statusBadges.push(`<span class="badge text-bg-${game.has_latest_version ? 'success' : 'warning'}">Up to date</span>`);
             }
             if (game.has_all_dlcs !== undefined) {
@@ -1010,7 +1045,7 @@
             const row = $(`
                 <tr>
                     <td>
-                        <div class="fw-semibold">${title}</div>
+                        <div class="fw-semibold" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="${escapeHtml(title)}">${title}</div>
                         <div class="text-muted small">${subtitle}</div>
                     </td>
                     <td class="text-muted small">${escapeHtml(splitGenres(getGameGenre(game)).join(', ')) || '-'}</td>
@@ -1044,12 +1079,12 @@
 
     function getColumnsForCardSize(size) {
         switch (size) {
-            case 1: return 1; // 2 columns
-            case 2: return 2; // 3 columns
-            case 3: return 3; // 4 columns
-            case 4: return 4; // 6 columns
-            case 5: return 6; // 8 columns
-            default: return 4; // default to 3 columns
+            case 1: return 6; // smallest cards
+            case 2: return 4;
+            case 3: return 3;
+            case 4: return 2;
+            case 5: return 1; // largest cards
+            default: return 3;
         }
     }
 
@@ -1197,7 +1232,10 @@
         const slider = $('#cardSizeRange');
         slider.attr('min', r.min);
         slider.attr('max', r.max);
-        slider.val(clampCardSizeForView(currentView, cardSize));
+        const clamped = clampCardSizeForView(currentView, cardSize);
+        slider.val(clamped);
+        $('#cardSizeDecrease').prop('disabled', clamped <= r.min || currentView === 'list');
+        $('#cardSizeIncrease').prop('disabled', clamped >= r.max || currentView === 'list');
     }
 
     function updatePaginationControls(nbDisplayedGames) {
@@ -1302,14 +1340,23 @@
         // Calculate the size of the icons based on the slider value.
         // Use distinct steps so adjacent settings are visually different.
         const iconSizes = {
-            1: 320,
-            2: 280,
+            1: 160,
+            2: 200,
             3: 240,
-            4: 200,
-            5: 160,
+            4: 280,
+            5: 320,
         };
         const iconSize = iconSizes[cardSize] || 240;
         $('#gameGrid').css('--icon-size', `${iconSize}px`);
+    }
+
+    function applyCurrentCardSize() {
+        applyCardSizeLimits();
+        if (currentView === 'icon') {
+            adjustIconSizes(cardSize);
+        } else if (currentView === 'card') {
+            adjustCardSizes(cardSize);
+        }
     }
 
     function saveFiltersToStorage() {
@@ -1546,12 +1593,21 @@
         $('#cardSizeRange').on('input', function () {
             cardSize = clampCardSizeForView(currentView, $(this).val());
             saveCardSizeForView(currentView, cardSize);
-            applyCardSizeLimits();
-            if (currentView === 'icon') {
-                adjustIconSizes(cardSize);
-            } else {
-                adjustCardSizes(cardSize);
-            }
+            applyCurrentCardSize();
+        });
+
+        $('#cardSizeDecrease').on('click', function () {
+            const r = getCardSizeRangeForView(currentView);
+            cardSize = Math.max(r.min, clampCardSizeForView(currentView, cardSize) - 1);
+            saveCardSizeForView(currentView, cardSize);
+            applyCurrentCardSize();
+        });
+
+        $('#cardSizeIncrease').on('click', function () {
+            const r = getCardSizeRangeForView(currentView);
+            cardSize = Math.min(r.max, clampCardSizeForView(currentView, cardSize) + 1);
+            saveCardSizeForView(currentView, cardSize);
+            applyCurrentCardSize();
         });
 
         // Event listener for view buttons

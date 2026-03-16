@@ -5075,6 +5075,12 @@ def get_all_titles_api():
             func.max(app_version_num_expr).label('max_version'),
             func.max(
                 case(
+                    (Apps.owned.is_(True), 1),
+                    else_=0
+                )
+            ).label('has_owned'),
+            func.max(
+                case(
                     (Apps.owned.is_(True), app_version_num_expr),
                     else_=0
                 )
@@ -5090,7 +5096,16 @@ def get_all_titles_api():
             func.count().label('dlc_count'),
             func.sum(
                 case(
-                    (dlc_title_status_subquery.c.max_owned_version >= dlc_title_status_subquery.c.max_version, 1),
+                    (
+                        and_(
+                            dlc_title_status_subquery.c.has_owned == 1,
+                            or_(
+                                dlc_title_status_subquery.c.max_version <= 0,
+                                dlc_title_status_subquery.c.max_owned_version >= dlc_title_status_subquery.c.max_version,
+                            ),
+                        ),
+                        1,
+                    ),
                     else_=0
                 )
             ).label('complete_dlc_count')

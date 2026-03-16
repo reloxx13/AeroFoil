@@ -31,6 +31,9 @@ TITLEDB_DEFAULT_FILES = [
     'versions.txt',
     'languages.json',
 ]
+TITLEDB_OPTIONAL_FILES = [
+    'cnmts-fixed.json',
+]
 
 GEOLITE_DB_DIR = os.path.join(DATA_DIR, 'geoip')
 GEOLITE_DB_FILE = os.path.join(GEOLITE_DB_DIR, 'GeoLite2-City.mmdb')

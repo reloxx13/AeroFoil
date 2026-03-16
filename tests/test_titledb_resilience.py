@@ -48,12 +48,27 @@ class TitleDBResilienceTests(unittest.TestCase):
             fp.write("{}")
         with open(os.path.join(self.titledb_dir, "versions.txt"), "w", encoding="utf-8") as fp:
             fp.write("0100000000001000|ignored|0\n")
+        with open(os.path.join(self.titledb_dir, "languages.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+
+    class _FakeRemoteZip:
+        def __init__(self, filenames):
+            self._filenames = list(filenames)
+
+        class _Info:
+            def __init__(self, filename):
+                self.filename = filename
+
+        def infolist(self):
+            return [TitleDBResilienceTests._FakeRemoteZip._Info(name) for name in self._filenames]
 
     def _patch_titles_env(self):
         stack = ExitStack()
         stack.enter_context(patch.object(titles, "TITLEDB_DIR", self.titledb_dir))
         stack.enter_context(patch.object(titles, "APP_DIR", self.tmp_root))
         stack.enter_context(patch.object(titles, "_versions_index_file", os.path.join(self.titledb_dir, "versions.index.sqlite3")))
+        stack.enter_context(patch.object(titles, "_cnmts_default_index_file", os.path.join(self.titledb_dir, "cnmts.index.sqlite3")))
+        stack.enter_context(patch.object(titles, "_cnmts_fixed_index_file", os.path.join(self.titledb_dir, "cnmts-fixed.index.sqlite3")))
         stack.enter_context(patch.object(titles, "_cnmts_index_file", os.path.join(self.titledb_dir, "cnmts.index.sqlite3")))
         stack.enter_context(patch.object(titles, "_titles_index_file", os.path.join(self.titledb_dir, "titles.index.sqlite3")))
         stack.enter_context(patch("app.titles._ensure_versions_index", side_effect=self._fake_ensure_versions_index))
@@ -196,6 +211,73 @@ class TitleDBResilienceTests(unittest.TestCase):
         self.assertNotEqual(before, after)
         self.assertNotIn("missing", after)
         titles.release_titledb()
+
+    def test_required_titledb_files_prefers_fixed_cnmts_when_present(self):
+        self._write_core_files('{"0100000000001000":{"id":"0100000000001000","name":"Example Title","bannerUrl":"","iconUrl":"","category":""}}')
+        fixed_path = os.path.join(self.titledb_dir, "cnmts-fixed.json")
+        with open(fixed_path, "w", encoding="utf-8") as fp:
+            fp.write("{}")
+
+        with patch.object(titles, "TITLEDB_DIR", self.titledb_dir), \
+            patch("app.titles.titledb.get_region_titles_file", return_value="titles.US.en.json"):
+            required = dict(titles._required_titledb_files(self.settings))
+
+        self.assertEqual(required["cnmts"], fixed_path)
+
+    def test_load_titledb_uses_fixed_cnmts_index_when_fixed_file_present(self):
+        self._write_core_files('{"0100000000001000":{"id":"0100000000001000","name":"Example Title","bannerUrl":"","iconUrl":"","category":""}}')
+        fixed_path = os.path.join(self.titledb_dir, "cnmts-fixed.json")
+        fixed_index_path = os.path.join(self.titledb_dir, "cnmts-fixed.index.sqlite3")
+        with open(fixed_path, "w", encoding="utf-8") as fp:
+            fp.write("{}")
+
+        with self._patch_titles_env(), \
+            patch("app.titles.load_settings", return_value=self.settings), \
+            patch("app.titles.titledb.get_region_titles_file", return_value="titles.US.en.json"), \
+            patch("app.titles.titledb.get_descriptions_url", return_value=("https://example.invalid/US.en.json", "US.en.json")), \
+            patch("app.titles._ensure_titledb_descriptions_file", return_value=None):
+            loaded = titles.load_titledb()
+            self.assertEqual(titles._cnmts_index_file, fixed_index_path)
+
+        self.assertTrue(loaded)
+        titles.release_titledb()
+
+    def test_update_titledb_files_downloads_missing_optional_fixed_file_without_new_commit(self):
+        latest_marker = "latest_example123"
+        local_latest = os.path.join(self.titledb_dir, ".latest")
+        with open(local_latest, "w", encoding="utf-8") as fp:
+            fp.write("example123")
+        with open(os.path.join(self.titledb_dir, "cnmts.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+        with open(os.path.join(self.titledb_dir, "titles.US.en.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+        with open(os.path.join(self.titledb_dir, "versions.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+        with open(os.path.join(self.titledb_dir, "versions.txt"), "w", encoding="utf-8") as fp:
+            fp.write("0100000000001000|ignored|0\n")
+        with open(os.path.join(self.titledb_dir, "languages.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+
+        fake_zip = self._FakeRemoteZip([
+            latest_marker,
+            "cnmts.json",
+            "cnmts-fixed.json",
+            "versions.json",
+            "versions.txt",
+            "languages.json",
+            "titles.US.en.json",
+        ])
+
+        with patch.object(titledb, "TITLEDB_DIR", self.titledb_dir), \
+            patch.object(titledb, "APP_DIR", self.tmp_root), \
+            patch.object(titledb, "TITLEDB_ARTEFACTS_URL", "https://example.invalid/titledb.zip"), \
+            patch("app.titledb._get_with_retry", return_value=types.SimpleNamespace(status_code=302, headers={"Location": "https://example.invalid/direct.zip"})), \
+            patch("app.titledb.unzip_http.RemoteZipFile", return_value=fake_zip), \
+            patch("app.titledb.download_titledb_files") as mocked_download, \
+            patch("app.titledb._download_json_file", return_value=False):
+            titledb.update_titledb_files(self.settings)
+
+        mocked_download.assert_called_once_with(fake_zip, ["cnmts-fixed.json"])
 
 
 if __name__ == "__main__":

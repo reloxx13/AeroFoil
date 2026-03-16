@@ -244,6 +244,7 @@ def update_titledb_files(app_settings):
             raise ValueError("No response received for TitleDB artefacts")
         direct_url = r.headers.get('Location') if (300 <= r.status_code < 400) else str(TITLEDB_ARTEFACTS_URL)
         rzf = unzip_http.RemoteZipFile(direct_url)
+        remote_files = {info.filename for info in rzf.infolist()}
     except Exception as e:
         logger.error(f'Failed to fetch TitleDB artefacts: {e}')
         raise
@@ -264,6 +265,17 @@ def update_titledb_files(app_settings):
         )
         files_to_update.extend(missing_core_files)
         need_descriptions = True
+
+    missing_optional_files = [
+        file for file in TITLEDB_OPTIONAL_FILES
+        if file in remote_files and file not in current_files
+    ]
+    if missing_optional_files:
+        logger.info(
+            "Missing optional TitleDB file(s): %s. They will be downloaded.",
+            ", ".join(missing_optional_files)
+        )
+        files_to_update.extend(missing_optional_files)
 
     # Ensure we have a local description index (used for game info descriptions).
     desc_url, desc_filename = _get_descriptions_url(app_settings)

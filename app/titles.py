@@ -112,7 +112,9 @@ _cnmts_index_ready = False
 _titles_index_ready = False
 _versions_index_ready = False
 _versions_index_file = os.path.join(TITLEDB_DIR, 'versions.index.sqlite3')
-_cnmts_index_file = os.path.join(TITLEDB_DIR, 'cnmts.index.sqlite3')
+_cnmts_default_index_file = os.path.join(TITLEDB_DIR, 'cnmts.index.sqlite3')
+_cnmts_fixed_index_file = os.path.join(TITLEDB_DIR, 'cnmts-fixed.index.sqlite3')
+_cnmts_index_file = _cnmts_default_index_file
 _titles_index_file = os.path.join(TITLEDB_DIR, 'titles.index.sqlite3')
 _titledb_lock = threading.Lock()
 _missing_titledb_log_lock = threading.Lock()
@@ -153,6 +155,7 @@ def _reset_titledb_state():
     global _cnmts_index_ready
     global _titles_index_ready
     global _versions_index_ready
+    global _cnmts_index_file
     global _titles_desc_db
     global _titles_desc_by_title_id
     global _titles_images_by_title_id
@@ -166,6 +169,7 @@ def _reset_titledb_state():
     _cnmts_index_ready = False
     _titles_index_ready = False
     _versions_index_ready = False
+    _cnmts_index_file = _cnmts_default_index_file
     _titles_desc_db = None
     _titles_desc_by_title_id = None
     _titles_images_by_title_id = None
@@ -651,8 +655,10 @@ def _recover_corrupted_titledb_file(app_settings, file_path, label):
     titledb.update_titledb(app_settings)
 
 def _required_titledb_files(app_settings):
+    cnmts_fixed_path = os.path.join(TITLEDB_DIR, 'cnmts-fixed.json')
+    cnmts_path = cnmts_fixed_path if os.path.isfile(cnmts_fixed_path) else os.path.join(TITLEDB_DIR, 'cnmts.json')
     return [
-        ('cnmts', os.path.join(TITLEDB_DIR, 'cnmts.json')),
+        ('cnmts', cnmts_path),
         ('region_titles', os.path.join(TITLEDB_DIR, titledb.get_region_titles_file(app_settings))),
         ('versions', os.path.join(TITLEDB_DIR, 'versions.json')),
         ('versions_txt', os.path.join(TITLEDB_DIR, 'versions.txt')),
@@ -849,6 +855,7 @@ def load_titledb():
     global _cnmts_index_ready
     global _titles_index_ready
     global _versions_index_ready
+    global _cnmts_index_file
     global _titles_desc_db
     global _titles_desc_by_title_id
     global _titles_images_by_title_id
@@ -902,6 +909,11 @@ def load_titledb():
         region_titles_file = dict(required_files).get('region_titles')
         versions_file = dict(required_files).get('versions')
         versions_txt_file = dict(required_files).get('versions_txt')
+        _cnmts_index_file = (
+            _cnmts_fixed_index_file
+            if os.path.basename(str(cnmts_file or '')).lower() == 'cnmts-fixed.json'
+            else _cnmts_default_index_file
+        )
 
         for attempt in range(2):
             try:

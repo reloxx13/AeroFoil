@@ -48,6 +48,21 @@ jobs:
             sys.path.append(os.getcwd())
             import nut
 
+            def derive_base_title_id(app_id):
+              app_id = str(app_id or '').strip().upper()
+              if len(app_id) != 16:
+                return None
+              if app_id.endswith('000'):
+                return app_id
+              if app_id.endswith('800'):
+                return f"{app_id[:-3]}000"
+              try:
+                return (hex(int(app_id[:-3], 16) - 1)[2:].rjust(len(app_id[:-3]), '0') + '000').upper()
+              except Exception:
+                return None
+
+            generated_title_ids = set()
+
             with open('titledb/languages.json') as f:
               languages = json.load(f)
               languages = dict(sorted(languages.items()))
@@ -55,7 +70,45 @@ jobs:
               for language in languages[region]:
                   print(region, language)
                   nut.importRegion(region, language)
+                  with open('titledb/titles.json', encoding='utf-8-sig') as titles_fp:
+                    region_titles = json.load(titles_fp) or {}
+                  for title_id in region_titles.keys():
+                    title_id = str(title_id or '').strip().upper()
+                    if title_id:
+                      generated_title_ids.add(title_id)
                   os.rename('titledb/titles.json', f'build_artefacts/titles.{region}.{language}.json')
+
+            with open('titledb/cnmts.json', encoding='utf-8-sig') as f:
+              cnmts = json.load(f) or {}
+
+            fixed_cnmts = dict(cnmts)
+            generated_dlc_count = 0
+            for title_id in sorted(generated_title_ids):
+              title_key = title_id.lower()
+              if title_key in fixed_cnmts:
+                continue
+              if title_id.endswith('000') or title_id.endswith('800'):
+                continue
+              base_title_id = derive_base_title_id(title_id)
+              if not base_title_id or base_title_id not in generated_title_ids:
+                continue
+              fixed_cnmts[title_key] = {
+                "0": {
+                  "contentEntries": [],
+                  "metaEntries": [],
+                  "otherApplicationId": base_title_id.lower(),
+                  "requiredApplicationVersion": 0,
+                  "requiredSystemVersion": None,
+                  "titleId": title_key,
+                  "titleType": 130,
+                  "version": "0",
+                }
+              }
+              generated_dlc_count += 1
+
+            print(f"Generated {generated_dlc_count} fallback DLC CNMT entries")
+            with open('build_artefacts/cnmts-fixed.json', 'w', encoding='utf-8') as f:
+              json.dump(fixed_cnmts, f, indent=4, sort_keys=True)
 
             for f in [
               'cnmts.json',
