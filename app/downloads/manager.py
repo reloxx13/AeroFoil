@@ -7,7 +7,7 @@ import time
 import unicodedata
 
 from app import titles as titles_lib
-from app.constants import ALLOWED_EXTENSIONS, APP_TYPE_UPD
+from app.constants import ALLOWED_EXTENSIONS, APP_TYPE_DLC, APP_TYPE_UPD
 from app.db import get_all_title_apps, get_all_titles, get_libraries_path
 from app.downloads.client import (
     TORRENT_CLIENT_TYPES,
@@ -21,7 +21,6 @@ from app.downloads.client import (
 from app.downloads.prowlarr import ProwlarrClient, filter_results, pick_best_result
 from app.library import _ensure_unique_path, _sanitize_component, enqueue_cleanup_roots, enqueue_organize_paths
 from app.settings import load_settings
-
 logger = logging.getLogger("downloads.manager")
 
 _state_lock = threading.Lock()
@@ -303,6 +302,8 @@ def _build_pending_queue_item(key, info, snapshot):
     return {
         "key": key,
         "title_id": info.get("title_id"),
+        "app_id": info.get("app_id"),
+        "app_type": info.get("app_type"),
         "version": info.get("version"),
         "expected_name": expected_name or None,
         "hash": info.get("hash"),
@@ -988,20 +989,145 @@ def _build_restored_pending_key(item):
     return f"restored:{protocol}:{client_type}:name:{label}"
 
 
+def _infer_content_info_from_completed_item(item):
+    src_path = str((item or {}).get("path") or "").strip()
+    if not src_path:
+        return None
+
+    candidates = []
+    for path in _iter_importable_download_files(src_path):
+        try:
+            _, success, contents, _ = titles_lib.identify_file(path)
+        except Exception:
+            success = False
+            contents = []
+        if not success or not contents:
+            normalized_name = os.path.basename(path)
+            normalized_extension = _get_import_extension(path)
+            if normalized_extension and normalized_name.lower().endswith(f".{normalized_extension}.hdf"):
+                normalized_name = normalized_name[:-4]
+            app_id, title_id, app_type, version, error = titles_lib.identify_file_from_filename(normalized_name)
+            if not error and title_id and app_type:
+                contents = [{
+                    "title_id": title_id,
+                    "app_id": app_id,
+                    "type": app_type,
+                    "version": version,
+                }]
+        for content in contents or []:
+            title_id = str(content.get("title_id") or "").strip().upper() or None
+            app_id = str(content.get("app_id") or "").strip().upper() or None
+            app_type = str(content.get("type") or "").strip().upper() or None
+            try:
+                version = int(content.get("version")) if content.get("version") is not None else None
+            except (TypeError, ValueError):
+                version = None
+            if not title_id and not app_id and not app_type:
+                continue
+            candidates.append({
+                "title_id": title_id,
+                "app_id": app_id,
+                "app_type": app_type,
+                "version": version,
+            })
+
+    if not candidates:
+        inferred_update = _infer_update_info_from_completed_item(item)
+        if not inferred_update:
+            return None
+        title_id = str(inferred_update.get("title_id") or "").strip().upper() or None
+        return {
+            "title_id": title_id,
+            "app_id": (f"{title_id[:-3]}800" if title_id and len(title_id) == 16 else None),
+            "app_type": APP_TYPE_UPD,
+            "title_name": inferred_update.get("title_name"),
+            "version": inferred_update.get("version"),
+        }
+
+    app_types = {entry["app_type"] for entry in candidates if entry.get("app_type")}
+    title_ids = {entry["title_id"] for entry in candidates if entry.get("title_id")}
+    app_ids = {entry["app_id"] for entry in candidates if entry.get("app_id")}
+    versions = {entry["version"] for entry in candidates if entry.get("version") is not None}
+
+    app_type = next(iter(app_types)) if len(app_types) == 1 else None
+    title_id = next(iter(title_ids)) if len(title_ids) == 1 else None
+    app_id = next(iter(app_ids)) if len(app_ids) == 1 else None
+    version = next(iter(versions)) if len(versions) == 1 else None
+    title_name = None
+
+    lookup_ids = []
+    if app_type == APP_TYPE_DLC and app_id:
+        lookup_ids.append(app_id)
+    if title_id:
+        lookup_ids.append(title_id)
+    for lookup_id in lookup_ids:
+        try:
+            title_info = titles_lib.get_game_info(lookup_id) or {}
+        except Exception:
+            title_info = {}
+        title_name = str(title_info.get("name") or "").strip() or None
+        if title_name:
+            break
+
+    return {
+        "title_id": title_id,
+        "app_id": app_id,
+        "app_type": app_type,
+        "title_name": title_name,
+        "version": version,
+    }
+
+
+def _infer_pending_info_from_queue_item(item):
+    item = item or {}
+    name = str(item.get("name") or "").strip() or None
+    protocol = str(item.get("protocol") or "").strip().lower() or None
+    client_type = str(item.get("client_type") or "").strip().lower() or None
+    normalized_id = _normalize_pending_item_id(item.get("id") or item.get("hash"), protocol=protocol)
+    info = {
+        "title_id": None,
+        "app_id": None,
+        "app_type": None,
+        "version": None,
+        "hash": normalized_id or None,
+        "id": normalized_id or None,
+        "expected_name": name,
+        "title_name": name,
+        "protocol": protocol,
+        "client_type": client_type,
+        "state": "queued",
+        "state_reason": None,
+        "last_seen_status": item.get("status") or None,
+        "last_seen_path": str(item.get("path") or "").strip() or None,
+    }
+    inferred = _infer_content_info_from_completed_item(item)
+    if inferred:
+        info["title_id"] = inferred.get("title_id")
+        info["app_id"] = inferred.get("app_id")
+        info["app_type"] = inferred.get("app_type")
+        info["version"] = inferred.get("version")
+        info["title_name"] = inferred.get("title_name") or info["title_name"]
+    return info
+
+
 def _restore_pending_from_active(downloads):
     _ensure_downloads_state_loaded()
     poll_targets = _get_completed_poll_targets(downloads)
     if not poll_targets:
         return 0
 
-    active_items = []
+    queued_items = []
     for protocol, client_cfg in poll_targets:
         try:
-            active_items.extend(list_active_downloads(protocol, client_cfg))
+            queued_items.extend(list_active_downloads(protocol, client_cfg))
         except Exception as exc:
             logger.warning("Failed to restore pending %s queue state: %s", protocol, exc)
+        try:
+            queued_items.extend(list_completed_downloads(protocol, client_cfg))
+        except Exception as exc:
+            logger.warning("Failed to restore completed %s queue state: %s", protocol, exc)
 
-    if not active_items:
+    if not queued_items:
         return 0
 
     restored = 0
@@ -1010,7 +1136,7 @@ def _restore_pending_from_active(downloads):
             identity for identity in (_get_pending_identity(info) for info in _state["pending"].values())
             if identity
         }
-        for item in active_items:
+        for item in queued_items:
             identity = _get_pending_identity(item)
             if identity and identity in known_identities:
                 continue
@@ -1019,24 +1145,7 @@ def _restore_pending_from_active(downloads):
                 if identity:
                     known_identities.add(identity)
                 continue
-            name = str(item.get("name") or "").strip()
-            protocol = str(item.get("protocol") or "").strip().lower() or None
-            client_type = str(item.get("client_type") or "").strip().lower() or None
-            normalized_id = _normalize_pending_item_id(item.get("id") or item.get("hash"), protocol=protocol)
-            _state["pending"][key] = {
-                "title_id": None,
-                "version": None,
-                "hash": normalized_id or None,
-                "id": normalized_id or None,
-                "expected_name": name or None,
-                "title_name": name or None,
-                "protocol": protocol,
-                "client_type": client_type,
-                "state": "queued",
-                "state_reason": None,
-                "last_seen_status": item.get("status") or None,
-                "last_seen_path": str(item.get("path") or "").strip() or None,
-            }
+            _state["pending"][key] = _infer_pending_info_from_queue_item(item)
             if identity:
                 known_identities.add(identity)
             restored += 1
@@ -1051,6 +1160,8 @@ def _track_pending(key, update, item_id, expected_name=None, protocol=None, clie
     with _state_lock:
         _state["pending"][key] = {
             "title_id": update["title_id"],
+            "app_id": update.get("app_id"),
+            "app_type": update.get("app_type"),
             "version": update["version"],
             "hash": normalized_id or None,
             "id": normalized_id or None,
@@ -1285,6 +1396,9 @@ def _process_tracked_completed_item_locked(key, info, bucket):
         return []
 
     _update_pending_live_metadata(info, item=match, status="completed")
+    matched_id = match.get("id") or match.get("hash")
+    if matched_id:
+        bucket["matched_ids"].add(matched_id)
     move_info = _resolve_completed_update_info(info, match)
     moved_result, move_reason = _move_completed_with_reason(match, move_info)
     moved_match_paths = _coerce_moved_paths(moved_result)
@@ -1297,9 +1411,6 @@ def _process_tracked_completed_item_locked(key, info, bucket):
         _set_pending_stuck(info, move_reason or "move failed", live_item=match)
         return []
 
-    matched_id = match.get("id") or match.get("hash")
-    if matched_id:
-        bucket["matched_ids"].add(matched_id)
     _state["pending"].pop(key, None)
     _state["completed"].add(key)
     if matched_id:
@@ -1509,7 +1620,6 @@ def _build_generic_import_destination(dest_root, src_path):
     if normalized_extension and lowered.endswith(f".{normalized_extension}.hdf"):
         basename = basename[:-4]
     return _ensure_unique_path(os.path.join(dest_root, basename))
-
 
 def _normalize_imported_wrapped_files(dest_path):
     if not dest_path or not os.path.exists(dest_path):

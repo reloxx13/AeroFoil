@@ -10,6 +10,7 @@ from app.downloads.manager import (
     _adopt_untracked_completed_item,
     _build_pending_queue_item,
     _format_pending_label,
+    _infer_pending_info_from_queue_item,
     _infer_update_info_from_completed_item,
     _iter_importable_download_files,
     _move_completed_with_reason,
@@ -486,6 +487,71 @@ class QueueRoutingTests(unittest.TestCase):
         self.assertEqual(state["pending"][0]["label"], "Example Release NSW-GRP")
         self.assertEqual(state["pending"][0]["protocol"], "torrent")
 
+    @patch("app.downloads.manager._infer_pending_info_from_queue_item")
+    @patch("app.downloads.manager.list_completed_downloads")
+    @patch("app.downloads.manager.list_active_downloads", return_value=[])
+    @patch("app.downloads.manager._get_completed_poll_targets")
+    @patch("app.downloads.manager.load_settings")
+    @patch("app.downloads.manager._state_lock")
+    @patch("app.downloads.manager._state", {
+        "running": False,
+        "last_run": 123.0,
+        "pending": {},
+        "completed": set(),
+    })
+    def test_get_downloads_state_restores_pending_items_from_completed_queue(
+        self,
+        _state_lock_mock,
+        load_settings_mock,
+        poll_targets_mock,
+        list_active_mock,
+        list_completed_mock,
+        infer_pending_mock,
+    ):
+        load_settings_mock.return_value = {
+            "downloads": {
+                "usenet_client": {
+                    "type": "sabnzbd",
+                    "url": "http://sab.local",
+                    "api_key": "secret",
+                    "category": "aerofoil",
+                }
+            }
+        }
+        poll_targets_mock.return_value = [("usenet", {"type": "sabnzbd", "category": "aerofoil"})]
+        list_completed_mock.return_value = [{
+            "id": "nzo123",
+            "hash": "nzo123",
+            "protocol": "usenet",
+            "client_type": "sabnzbd",
+            "name": "Example DLC Release",
+            "path": "X:\\fixture-root\\incoming\\Example DLC Release",
+        }]
+        infer_pending_mock.return_value = {
+            "title_id": "010086B00BB50000",
+            "app_id": None,
+            "app_type": "DLC",
+            "version": 0,
+            "hash": "nzo123",
+            "id": "nzo123",
+            "expected_name": "Example DLC Release",
+            "title_name": "Example Title",
+            "protocol": "usenet",
+            "client_type": "sabnzbd",
+            "state": "queued",
+            "state_reason": None,
+            "last_seen_status": None,
+            "last_seen_path": "X:\\fixture-root\\incoming\\Example DLC Release",
+        }
+
+        state = get_downloads_state()
+
+        self.assertEqual(len(state["pending"]), 1)
+        self.assertEqual(state["pending"][0]["id"], "nzo123")
+        self.assertEqual(state["pending"][0]["app_type"], "DLC")
+        self.assertEqual(state["pending"][0]["state"], "completed")
+        self.assertEqual(state["pending"][0]["label"], "Example DLC Release")
+
     @patch("app.downloads.manager.list_completed_downloads")
     @patch("app.downloads.manager.list_active_downloads", return_value=[])
     @patch("app.downloads.manager._get_completed_poll_targets")
@@ -558,8 +624,8 @@ class QueueRoutingTests(unittest.TestCase):
                 "version": 655360,
                 "hash": "nzo456",
                 "id": "nzo456",
-                "expected_name": "Game Boy Advance Nintendo Switch Online Update v3.2.0 INTERNAL NSW-SUXXORS",
-                "title_name": "Game Boy Advance Nintendo Switch Online",
+                "expected_name": "Example Title Update v3.2.0 INTERNAL NSW-GRP",
+                "title_name": "Example Title",
                 "protocol": "usenet",
                 "client_type": "sabnzbd",
                 "state": "queued",
@@ -594,8 +660,33 @@ class QueueRoutingTests(unittest.TestCase):
 
         self.assertEqual(
             state["pending"][0]["label"],
-            "Game Boy Advance Nintendo Switch Online Update v3.2.0 INTERNAL NSW-SUXXORS",
+            "Example Title Update v3.2.0 INTERNAL NSW-GRP",
         )
+
+    @patch("app.downloads.manager._infer_content_info_from_completed_item")
+    def test_infer_pending_info_from_queue_item_uses_completed_content_metadata(self, infer_content_mock):
+        infer_content_mock.return_value = {
+            "title_id": "010086B00BB50000",
+            "app_id": "010086B00BB51007",
+            "app_type": "DLC",
+            "title_name": "Example Title",
+            "version": 0,
+        }
+
+        info = _infer_pending_info_from_queue_item({
+            "id": "nzo123",
+            "hash": "nzo123",
+            "protocol": "usenet",
+            "client_type": "sabnzbd",
+            "name": "Example Title DLC Pack",
+            "path": "X:\\fixture-root\\incoming\\Example Title DLC Pack",
+        })
+
+        self.assertEqual(info["title_id"], "010086B00BB50000")
+        self.assertEqual(info["app_id"], "010086B00BB51007")
+        self.assertEqual(info["app_type"], "DLC")
+        self.assertEqual(info["version"], 0)
+        self.assertEqual(info["expected_name"], "Example Title DLC Pack")
 
     @patch("app.downloads.client.add_nzb")
     def test_queue_download_forwards_update_selection_to_usenet_client(self, add_nzb_mock):
@@ -1106,6 +1197,7 @@ class CompletedAdoptionTests(unittest.TestCase):
     ):
         poll_targets_mock.return_value = [("torrent", {"type": "qbittorrent"})]
         list_active_mock.return_value = []
+        move_completed_mock.return_value = (None, "move failed")
         list_completed_mock.return_value = [{
             "hash": "torrent-123",
             "name": "Unrelated Existing Torrent",
@@ -1116,7 +1208,7 @@ class CompletedAdoptionTests(unittest.TestCase):
 
         _check_completed({})
 
-        move_completed_mock.assert_not_called()
+        move_completed_mock.assert_called_once()
         remove_completed_mock.assert_not_called()
         enqueue_paths_mock.assert_not_called()
         enqueue_cleanup_roots_mock.assert_not_called()
@@ -1458,6 +1550,52 @@ class ManagedCompletionStateTests(unittest.TestCase):
             pending_item["state_reason"],
             "downloaded v983040 is not newer than owned v1376256",
         )
+
+    @patch("app.downloads.manager._adopt_untracked_completed_item")
+    @patch("app.downloads.manager.list_completed_downloads")
+    @patch("app.downloads.manager._get_completed_poll_targets")
+    @patch("app.downloads.manager._state_lock")
+    @patch("app.downloads.manager._state", {
+        "running": False,
+        "last_run": 0.0,
+        "pending": {
+            "0100C62011050000:1376256": {
+                "title_id": "0100C62011050000",
+                "version": 1376256,
+                "hash": "nzo123",
+                "id": "nzo123",
+                "expected_name": "Sample Release",
+                "title_name": "Sample Game",
+                "protocol": "usenet",
+                "client_type": "sabnzbd",
+                "state": "queued",
+                "state_reason": None,
+                "last_seen_status": None,
+                "last_seen_path": None,
+            }
+        },
+        "completed": set(),
+    })
+    @patch("app.downloads.manager._move_completed_with_reason", return_value=(None, "move failed"))
+    def test_check_completed_does_not_re_adopt_failed_tracked_item_as_untracked(
+        self,
+        move_completed_mock,
+        _state_lock_mock,
+        poll_targets_mock,
+        list_completed_mock,
+        adopt_untracked_mock,
+    ):
+        poll_targets_mock.return_value = [("usenet", {"type": "sabnzbd"})]
+        list_completed_mock.return_value = [{
+            "id": "nzo123",
+            "hash": "nzo123",
+            "name": "Sample Release",
+            "path": "C:\\tests\\completed\\Sample Release",
+        }]
+
+        _check_completed({})
+
+        adopt_untracked_mock.assert_not_called()
 
     @patch("app.downloads.manager._delete_download_payload", return_value=(True, None))
     @patch("app.downloads.manager.remove_active_download", return_value=(True, "ok"))
