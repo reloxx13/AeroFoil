@@ -21,6 +21,7 @@ try:
         _delete_target_apps,
         _finalize_staged_conversion_output,
         _format_nsz_command,
+        _iter_library_files,
         _pending_cleanup_roots,
         _pending_organize_paths,
         _sanitize_component,
@@ -30,6 +31,7 @@ try:
         enqueue_cleanup_roots,
         enqueue_organize_paths,
     )
+    from app.titles import getDirsAndFiles
 except ModuleNotFoundError as exc:
     _IMPORT_ERROR = exc
 
@@ -221,7 +223,7 @@ class LibraryHelperTests(unittest.TestCase):
         rmdir_mock,
     ):
         walk_mock.return_value = [
-            ("X:\\fixture-root\\Example Release NSW-GRP\\subdir", [], ["keep.nsp", "proof.nfo"]),
+            ("X:\\fixture-root\\Example Release NSW-GRP\\subdir", [], ["keep.nsp", "keep-dlc.nsp.hdf", "proof.nfo"]),
             ("X:\\fixture-root\\Example Release NSW-GRP", ["subdir"], ["notes.txt"]),
         ]
 
@@ -234,6 +236,39 @@ class LibraryHelperTests(unittest.TestCase):
                 "X:\\fixture-root\\Example Release NSW-GRP\\notes.txt",
             ],
         )
+
+    def test_iter_library_files_includes_wrapped_supported_files(self):
+        tmp_root = self._make_test_temp_root("iter_library_files")
+        os.makedirs(os.path.join(tmp_root, "subdir"), exist_ok=True)
+        with open(os.path.join(tmp_root, "base.nsp.hdf"), "w", encoding="utf-8") as handle:
+            handle.write("wrapped")
+        with open(os.path.join(tmp_root, "subdir", "update.nsz"), "w", encoding="utf-8") as handle:
+            handle.write("native")
+        with open(os.path.join(tmp_root, "subdir", "notes.txt"), "w", encoding="utf-8") as handle:
+            handle.write("ignored")
+
+        result = sorted(os.path.relpath(path, tmp_root) for path in _iter_library_files(tmp_root))
+
+        self.assertEqual(
+            result,
+            [
+                "base.nsp.hdf",
+                os.path.join("subdir", "update.nsz"),
+            ],
+        )
+
+    def test_get_dirs_and_files_includes_wrapped_supported_files(self):
+        tmp_root = self._make_test_temp_root("get_dirs_and_files")
+        os.makedirs(os.path.join(tmp_root, "nested"), exist_ok=True)
+        with open(os.path.join(tmp_root, "nested", "dlc.nsp.hdf"), "w", encoding="utf-8") as handle:
+            handle.write("wrapped")
+        with open(os.path.join(tmp_root, "nested", "proof.nfo"), "w", encoding="utf-8") as handle:
+            handle.write("ignored")
+
+        dirs, files = getDirsAndFiles(tmp_root)
+
+        self.assertIn(os.path.join(tmp_root, "nested"), dirs)
+        self.assertEqual(files, [os.path.join(tmp_root, "nested", "dlc.nsp.hdf")])
 
     @patch("app.library.delete_file_by_filepath")
     @patch("app.library.os.remove")

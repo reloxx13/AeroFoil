@@ -125,7 +125,10 @@ class Handler(FileSystemEventHandler):
         if source_event.is_directory:
             return
 
-        if not any(source_event.src_path.endswith(ext) or source_event.dest_path.endswith(ext) for ext in ALLOWED_EXTENSIONS):
+        if not (
+            is_supported_content_path(source_event.src_path)
+            or is_supported_content_path(source_event.dest_path)
+        ):
             return
 
         library_event = SimpleNamespace(
@@ -135,7 +138,7 @@ class Handler(FileSystemEventHandler):
             dest_path=source_event.dest_path,
         )
 
-        if library_event.type == 'moved' and not any(library_event.dest_path.endswith(ext) for ext in ALLOWED_EXTENSIONS):
+        if library_event.type == 'moved' and not is_supported_content_path(library_event.dest_path):
             library_event.type = 'deleted'
 
         if library_event.type == 'deleted':

@@ -558,8 +558,8 @@ class QueueRoutingTests(unittest.TestCase):
                 "version": 655360,
                 "hash": "nzo456",
                 "id": "nzo456",
-                "expected_name": "Game Boy Advance Nintendo Switch Online Update v3.2.0 INTERNAL NSW-SUXXORS",
-                "title_name": "Game Boy Advance Nintendo Switch Online",
+                "expected_name": "Example Title Update v3.2.0 INTERNAL NSW-GRP",
+                "title_name": "Example Title",
                 "protocol": "usenet",
                 "client_type": "sabnzbd",
                 "state": "queued",
@@ -594,7 +594,7 @@ class QueueRoutingTests(unittest.TestCase):
 
         self.assertEqual(
             state["pending"][0]["label"],
-            "Game Boy Advance Nintendo Switch Online Update v3.2.0 INTERNAL NSW-SUXXORS",
+            "Example Title Update v3.2.0 INTERNAL NSW-GRP",
         )
 
     @patch("app.downloads.client.add_nzb")
@@ -1409,6 +1409,50 @@ class ManagedCompletionStateTests(unittest.TestCase):
         self.assertIsNone(moved_path)
         self.assertEqual(reason, "downloaded v983040 is not newer than owned v1376256")
         move_mock.assert_not_called()
+
+    @patch("app.downloads.manager._cleanup_download_path")
+    @patch("app.downloads.manager._normalize_imported_wrapped_files", side_effect=lambda path: path[:-4] if path.endswith(".hdf") else path)
+    @patch("app.downloads.manager._build_generic_import_destination", side_effect=lambda dest_root, src_path: os.path.join(dest_root, os.path.basename(src_path)))
+    @patch("app.downloads.manager.shutil.move")
+    @patch(
+        "app.downloads.manager._iter_importable_download_files",
+        return_value=[
+            "C:\\tests\\completed\\sample_v983040.nsp.hdf",
+            "C:\\tests\\completed\\sample-dlc.nsp.hdf",
+        ],
+    )
+    @patch("app.downloads.manager.get_libraries_path", return_value=["X:\\library"])
+    @patch("app.downloads.manager.os.path.exists", return_value=True)
+    @patch("app.downloads.manager._get_highest_owned_update_version", return_value=1376256)
+    @patch("app.downloads.manager._select_completed_update_candidate", return_value=("C:\\tests\\completed\\sample_v983040.nsp.hdf", 983040))
+    def test_move_completed_imports_other_files_when_update_is_not_newer(
+        self,
+        select_candidate_mock,
+        highest_owned_mock,
+        exists_mock,
+        get_libraries_path_mock,
+        importable_files_mock,
+        move_mock,
+        build_dest_mock,
+        normalize_mock,
+        cleanup_mock,
+    ):
+        moved_path, reason = _move_completed_with_reason(
+            {"path": "C:\\tests\\completed\\Sample Release"},
+            {
+                "title_id": "0100C62011050000",
+                "title_name": "Sample Game",
+                "version": 1376256,
+            },
+        )
+
+        self.assertIsNone(reason)
+        self.assertEqual(moved_path, "X:\\library\\sample-dlc.nsp")
+        move_mock.assert_called_once_with(
+            "C:\\tests\\completed\\sample-dlc.nsp.hdf",
+            "X:\\library\\sample-dlc.nsp.hdf",
+        )
+        cleanup_mock.assert_called_once_with("C:\\tests\\completed\\Sample Release", "X:\\library")
 
     @patch("app.downloads.manager.list_completed_downloads")
     @patch("app.downloads.manager._get_completed_poll_targets")

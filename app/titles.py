@@ -744,7 +744,7 @@ def getDirsAndFiles(path):
             dirs, files = getDirsAndFiles(fullPath)
             allDirs += dirs
             allFiles += files
-        elif fullPath.split('.')[-1] in ALLOWED_EXTENSIONS:
+        elif is_supported_content_path(fullPath):
             allFiles.append(fullPath)
     return allDirs, allFiles
 

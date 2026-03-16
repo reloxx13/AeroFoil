@@ -122,6 +122,33 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ['keys', 'txt']
 
+
+def get_supported_content_extension(path):
+    name = os.path.basename(str(path or ""))
+    lowered = name.lower()
+    if not lowered:
+        return None
+    try:
+        from app.constants import ALLOWED_EXTENSIONS
+    except Exception:
+        return None
+    for extension in ALLOWED_EXTENSIONS:
+        suffix = f".{extension}"
+        if lowered.endswith(suffix) or lowered.endswith(f"{suffix}.hdf"):
+            return extension
+    return None
+
+
+def is_wrapped_content_path(path):
+    extension = get_supported_content_extension(path)
+    if not extension:
+        return False
+    return str(path or "").lower().endswith(f".{extension}.hdf")
+
+
+def is_supported_content_path(path):
+    return get_supported_content_extension(path) is not None
+
 def safe_write_json(path, data, **dump_kwargs):
     with _json_write_lock:
         dirpath = os.path.dirname(path) or "."

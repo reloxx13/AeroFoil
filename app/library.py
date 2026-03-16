@@ -121,11 +121,7 @@ def _iter_library_files(library_path):
     """Yield supported files under a library path without building a full list in memory."""
     for root, _, filenames in os.walk(library_path):
         for filename in filenames:
-            try:
-                extension = filename.rsplit('.', 1)[-1].lower()
-            except Exception:
-                extension = ''
-            if extension in ALLOWED_EXTENSIONS:
+            if is_supported_content_path(filename):
                 yield os.path.join(root, filename)
 
 def add_library_complete(app, watcher, path):
@@ -1976,8 +1972,7 @@ def _cleanup_import_staging_roots(paths):
             continue
         for dirpath, _, filenames in os.walk(root, topdown=False):
             for filename in filenames:
-                extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
-                if extension in ALLOWED_EXTENSIONS:
+                if is_supported_content_path(filename):
                     continue
                 try:
                     os.remove(os.path.join(dirpath, filename))
