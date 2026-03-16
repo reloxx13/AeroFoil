@@ -1861,8 +1861,23 @@
         $('#detailsMeta').html(metaItems.join(' '));
 
         const versions = Array.isArray(game.version) ? game.version : [];
-        const canDeleteRows = canManageDownloads && versions.some(version => version && version.deletable);
-        const versionRows = versions.map(version => {
+        const parseReleaseDateValue = (value) => {
+            const normalized = String(value || '').trim();
+            if (!normalized || normalized === 'Unknown') {
+                return Number.NEGATIVE_INFINITY;
+            }
+            const timestamp = Date.parse(normalized);
+            return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp;
+        };
+        const sortedVersions = [...versions].sort((left, right) => {
+            const releaseDiff = parseReleaseDateValue(right?.release_date) - parseReleaseDateValue(left?.release_date);
+            if (releaseDiff !== 0) {
+                return releaseDiff;
+            }
+            return Number(right?.version || 0) - Number(left?.version || 0);
+        });
+        const canDeleteRows = canManageDownloads && sortedVersions.some(version => version && version.deletable);
+        const versionRows = sortedVersions.map(version => {
             const actionCell = canDeleteRows
                 ? `
                     <td class="text-end">
@@ -1888,18 +1903,20 @@
                 </tr>
             `;
         }).join('');
-        const missingVersions = versions.filter(version => !version.owned);
-        const latestMissing = missingVersions.length ? missingVersions[missingVersions.length - 1] : null;
+        const missingVersions = sortedVersions.filter(version => !version.owned);
+        const latestMissing = missingVersions.length ? missingVersions[0] : null;
+        const latestKnownVersion = sortedVersions.length ? sortedVersions[0] : null;
+        const updateSearchVersion = latestMissing?.version ?? latestKnownVersion?.version ?? null;
         const titleQuery = game.title_id_name || game.name || game.title_id || '';
-        const updateButton = latestMissing
+        const updateButton = (canManageDownloads && game.title_id && updateSearchVersion !== null && updateSearchVersion !== undefined)
             ? `
                     <button type="button" class="btn btn-warning btn-sm manual-download-btn"
-                        data-title-id="${game.title_id}" data-version="${latestMissing.version}">
+                        data-title-id="${game.title_id}" data-version="${updateSearchVersion}">
                         <i class="bi bi-cloud-arrow-down"></i> Search updates
                     </button>
             `
             : '';
-        const baseButton = game.has_base === false
+        const baseButton = (canManageDownloads && titleQuery)
             ? `
                     <button type="button" class="btn btn-warning btn-sm manual-base-download-btn"
                         data-title-id="${game.title_id}" data-title-query="${titleQuery}">
@@ -1916,11 +1933,10 @@
                     </button>
             `
             : '';
-        const missingDlcItems = dlcList.filter(dlc => !dlc?.owned);
         const dlcSearchQuery = titleQuery ? `${titleQuery} DLC` : '';
-        const dlcSearchButton = (canManageDownloads && missingDlcItems.length && dlcSearchQuery)
+        const dlcSearchButton = (canManageDownloads && dlcSearchQuery)
             ? `
-                    <button type="button" class="btn btn-outline-warning btn-sm details-dlc-search-btn"
+                    <button type="button" class="btn btn-warning btn-sm details-dlc-search-btn"
                         data-title-id="${escapeHtml(String(game.title_id || ''))}"
                         data-query="${escapeHtml(dlcSearchQuery)}"
                         data-label="${escapeHtml(titleQuery || 'DLC')}">
@@ -1928,27 +1944,34 @@
                     </button>
             `
             : '';
-        const customSearchRow = latestMissing
+        const customSearchRow = canManageDownloads
             ? `
                     <div class="input-group input-group-sm mt-2 manual-search-group">
                         <input type="text" class="form-control manual-search-input" placeholder="Custom search terms">
                         <button type="button" class="btn btn-outline-secondary manual-search-btn"
-                            data-title-id="${game.title_id}" data-version="${latestMissing.version}">
+                            data-title-id="${game.title_id || ''}" data-version="${updateSearchVersion ?? ''}">
                             Search files
                         </button>
                     </div>
             `
             : '';
-        const actionRow = (canManageDownloads && (updateButton || baseButton || cascadeDeleteButton || dlcSearchButton))
+        const actionRow = (updateButton || baseButton || cascadeDeleteButton || dlcSearchButton)
             ? `
                 <div class="mt-3">
-                    <div class="d-flex flex-wrap gap-2">
-                        ${baseButton}
-                        ${updateButton}
-                        ${dlcSearchButton}
-                        ${cascadeDeleteButton}
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <div class="d-flex flex-wrap gap-2">
+                            ${baseButton}
+                            ${updateButton}
+                            ${dlcSearchButton}
+                        </div>
+                        ${cascadeDeleteButton
+                            ? `
+                                <div class="ms-auto d-flex flex-wrap gap-2">
+                                    ${cascadeDeleteButton}
+                                </div>
+                            `
+                            : ''}
                     </div>
-                    ${customSearchRow}
                 </div>
             `
             : '';
@@ -2035,30 +2058,33 @@
             `
             : '<div class="text-muted py-2">No DLC entries available.</div>';
 
+        const defaultToDlcTab = String(game.app_type || '').toUpperCase() === 'DLC';
+
         if (dlcList.length > 0) {
             $('#detailsVersions').html(`
                 ${actionRow}
-                <ul class="nav nav-tabs mb-2" id="detailsListTabs" role="tablist">
+                ${customSearchRow}
+                <ul class="nav nav-tabs mb-2 ${actionRow ? 'mt-3' : ''}" id="detailsListTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="details-updates-tab" data-bs-toggle="tab"
+                        <button class="nav-link ${defaultToDlcTab ? '' : 'active'}" id="details-updates-tab" data-bs-toggle="tab"
                             data-bs-target="#details-updates-pane" type="button" role="tab"
-                            aria-controls="details-updates-pane" aria-selected="true">
+                            aria-controls="details-updates-pane" aria-selected="${defaultToDlcTab ? 'false' : 'true'}">
                             Updates <span class="badge rounded-pill text-bg-secondary ms-1">${versions.length}</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="details-dlc-tab" data-bs-toggle="tab"
+                        <button class="nav-link ${defaultToDlcTab ? 'active' : ''}" id="details-dlc-tab" data-bs-toggle="tab"
                             data-bs-target="#details-dlc-pane" type="button" role="tab"
-                            aria-controls="details-dlc-pane" aria-selected="false">
+                            aria-controls="details-dlc-pane" aria-selected="${defaultToDlcTab ? 'true' : 'false'}">
                             DLC <span class="badge rounded-pill text-bg-secondary ms-1">${dlcList.length}</span>
                         </button>
                     </li>
                 </ul>
                 <div class="tab-content" id="detailsTabContent">
-                    <div class="tab-pane fade show active details-tab-pane" id="details-updates-pane" role="tabpanel" aria-labelledby="details-updates-tab">
+                    <div class="tab-pane fade ${defaultToDlcTab ? '' : 'show active'} details-tab-pane" id="details-updates-pane" role="tabpanel" aria-labelledby="details-updates-tab">
                         ${updatesTabHtml}
                     </div>
-                    <div class="tab-pane fade details-tab-pane" id="details-dlc-pane" role="tabpanel" aria-labelledby="details-dlc-tab">
+                    <div class="tab-pane fade ${defaultToDlcTab ? 'show active' : ''} details-tab-pane" id="details-dlc-pane" role="tabpanel" aria-labelledby="details-dlc-tab">
                         ${dlcTabHtml}
                     </div>
                 </div>
@@ -2066,6 +2092,7 @@
         } else {
             $('#detailsVersions').html(`
                 ${actionRow}
+                ${customSearchRow}
                 <div class="tab-content" id="detailsTabContent">
                     <div class="tab-pane show active details-tab-pane" id="details-updates-pane" role="tabpanel">
                         ${updatesTabHtml}
