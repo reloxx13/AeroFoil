@@ -12,6 +12,7 @@ flask_app = None
 try:
     from app.app import app as flask_app
     from app.app import _app_has_deletable_files
+    from app.app import _build_title_details_dlc_items
     from app.app import _build_deletable_version_map
     from app.app import _sort_library_rows_by_title_name
     from app.app import manage_delete_library_content
@@ -434,6 +435,45 @@ class LibraryHelperTests(unittest.TestCase):
 
         self.assertTrue(deletable[("0100AAAA", "UPDATE", "3")])
         self.assertFalse(deletable[("0100BBBB", "DLC", "1")])
+
+    @patch("app.app.titles.get_game_info")
+    @patch("app.app.titles.get_all_app_existing_versions")
+    @patch("app.app.titles.get_all_existing_dlc")
+    @patch("app.app.db.session.query")
+    def test_build_title_details_dlc_items_falls_back_to_title_level_dlc_lookup(
+        self,
+        query_mock,
+        get_all_existing_dlc_mock,
+        get_all_app_existing_versions_mock,
+        get_game_info_mock,
+    ):
+        query_mock.return_value.filter.return_value.all.return_value = []
+        get_all_existing_dlc_mock.return_value = ["0100AAAA00001001", "0100AAAA00001002"]
+        get_all_app_existing_versions_mock.side_effect = lambda app_id: [0, 5] if app_id == "0100AAAA00001001" else [0]
+        get_game_info_mock.side_effect = lambda app_id: {"name": f"Addon {app_id[-4:]}"} if app_id else {}
+
+        dlc_items, has_all_dlcs = _build_title_details_dlc_items(123, "0100AAAA00000000")
+
+        self.assertEqual(
+            dlc_items,
+            [
+                {
+                    "app_id": "0100AAAA00001001",
+                    "name": "Addon 1001",
+                    "latest_version": 5,
+                    "owned_version": None,
+                    "owned": False,
+                },
+                {
+                    "app_id": "0100AAAA00001002",
+                    "name": "Addon 1002",
+                    "latest_version": 0,
+                    "owned_version": None,
+                    "owned": False,
+                },
+            ],
+        )
+        self.assertFalse(has_all_dlcs)
 
     @patch("app.app._run_post_library_change")
     @patch("app.app.post_library_change")
