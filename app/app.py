@@ -5323,56 +5323,56 @@ def get_all_titles_api():
         query = query.filter(Apps.owned.is_(True))
     elif owned == 'missing':
         query = query.filter(Apps.owned.is_(False))
-    if updates == 'up_to_date':
-        query = query.filter(
+    updates_up_to_date_filter = or_(
+        and_(
+            Apps.app_type == APP_TYPE_BASE,
+            base_status_subquery.c.has_owned_base == 1,
             or_(
-                and_(
-                    Apps.app_type == APP_TYPE_BASE,
-                    base_status_subquery.c.has_owned_base == 1,
-                    or_(
-                        update_status_subquery.c.max_update_version.is_(None),
-                        update_status_subquery.c.max_update_version == 0,
-                        update_status_subquery.c.max_owned_update_version >= update_status_subquery.c.max_update_version,
-                    ),
-                ),
-                and_(Apps.app_type == APP_TYPE_DLC, dlc_agg_subquery.c.max_owned_version >= dlc_agg_subquery.c.max_version),
-            )
-        )
-    elif updates == 'outdated':
-        query = query.filter(
+                update_status_subquery.c.max_update_version.is_(None),
+                update_status_subquery.c.max_update_version == 0,
+                update_status_subquery.c.max_owned_update_version >= update_status_subquery.c.max_update_version,
+            ),
+        ),
+        and_(Apps.app_type == APP_TYPE_DLC, dlc_agg_subquery.c.max_owned_version >= dlc_agg_subquery.c.max_version),
+    )
+    updates_outdated_filter = or_(
+        and_(
+            Apps.app_type == APP_TYPE_BASE,
             or_(
+                func.coalesce(base_status_subquery.c.has_owned_base, 0) == 0,
                 and_(
-                    Apps.app_type == APP_TYPE_BASE,
-                    or_(
-                        func.coalesce(base_status_subquery.c.has_owned_base, 0) == 0,
-                        and_(
-                            func.coalesce(update_status_subquery.c.max_update_version, 0) > 0,
-                            func.coalesce(update_status_subquery.c.max_owned_update_version, 0) < func.coalesce(update_status_subquery.c.max_update_version, 0),
-                        ),
-                    ),
+                    func.coalesce(update_status_subquery.c.max_update_version, 0) > 0,
+                    func.coalesce(update_status_subquery.c.max_owned_update_version, 0) < func.coalesce(update_status_subquery.c.max_update_version, 0),
                 ),
-                and_(Apps.app_type == APP_TYPE_DLC, dlc_agg_subquery.c.max_owned_version < dlc_agg_subquery.c.max_version),
-            )
-        )
-    if completion == 'complete':
-        query = query.filter(
-            and_(
-                Apps.app_type == APP_TYPE_BASE,
-                or_(
-                    dlc_completion_subquery.c.dlc_count.is_(None),
-                    dlc_completion_subquery.c.dlc_count == 0,
-                    dlc_completion_subquery.c.complete_dlc_count >= dlc_completion_subquery.c.dlc_count,
-                ),
-            )
-        )
-    elif completion == 'missing_dlc':
-        query = query.filter(
-            and_(
-                Apps.app_type == APP_TYPE_BASE,
-                func.coalesce(dlc_completion_subquery.c.dlc_count, 0) > 0,
-                func.coalesce(dlc_completion_subquery.c.complete_dlc_count, 0) < func.coalesce(dlc_completion_subquery.c.dlc_count, 0),
-            )
-        )
+            ),
+        ),
+        and_(Apps.app_type == APP_TYPE_DLC, dlc_agg_subquery.c.max_owned_version < dlc_agg_subquery.c.max_version),
+    )
+    completion_complete_filter = and_(
+        Apps.app_type == APP_TYPE_BASE,
+        or_(
+            dlc_completion_subquery.c.dlc_count.is_(None),
+            dlc_completion_subquery.c.dlc_count == 0,
+            dlc_completion_subquery.c.complete_dlc_count >= dlc_completion_subquery.c.dlc_count,
+        ),
+    )
+    completion_missing_dlc_filter = and_(
+        Apps.app_type == APP_TYPE_BASE,
+        func.coalesce(dlc_completion_subquery.c.dlc_count, 0) > 0,
+        func.coalesce(dlc_completion_subquery.c.complete_dlc_count, 0) < func.coalesce(dlc_completion_subquery.c.dlc_count, 0),
+    )
+
+    if updates == 'outdated' and completion == 'missing_dlc':
+        query = query.filter(or_(updates_outdated_filter, completion_missing_dlc_filter))
+    else:
+        if updates == 'up_to_date':
+            query = query.filter(updates_up_to_date_filter)
+        elif updates == 'outdated':
+            query = query.filter(updates_outdated_filter)
+        if completion == 'complete':
+            query = query.filter(completion_complete_filter)
+        elif completion == 'missing_dlc':
+            query = query.filter(completion_missing_dlc_filter)
 
     if search:
         search_normalized = _normalize_library_search_text(search)
