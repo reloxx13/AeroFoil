@@ -73,7 +73,8 @@ class ProwlarrClient:
 
 def _normalize_result(item):
     protocol = _normalize_protocol(item)
-    age_minutes = _extract_age_minutes(item)
+    published_at = _extract_published_at(item)
+    age_minutes = _extract_age_minutes(item, published_at=published_at)
     return {
         "title": item.get("title") or "",
         "size": int(item.get("size") or 0),
@@ -86,6 +87,7 @@ def _normalize_result(item):
         "protocol": protocol,
         "age_minutes": age_minutes,
         "age_label": _format_age_label(age_minutes),
+        "published_at": published_at,
         "raw": item,
     }
 
@@ -113,7 +115,17 @@ def _parse_release_datetime(value):
     return dt.astimezone(timezone.utc)
 
 
-def _extract_age_minutes(item):
+def _extract_published_at(item):
+    raw = item or {}
+    for key in ("publishDate", "publishedDate", "publishTime", "published", "pubDate"):
+        dt = _parse_release_datetime(raw.get(key))
+        if dt is None:
+            continue
+        return dt.isoformat().replace("+00:00", "Z")
+    return ""
+
+
+def _extract_age_minutes(item, published_at=None):
     raw = item or {}
     for key in ("ageMinutes", "age_minutes"):
         age_value = _coerce_age_int(raw.get(key))
@@ -126,10 +138,13 @@ def _extract_age_minutes(item):
     age_value = _coerce_age_int(raw.get("age"))
     if age_value is not None:
         return age_value
-    for key in ("publishDate", "publishedDate", "publishTime", "published", "pubDate"):
-        dt = _parse_release_datetime(raw.get(key))
-        if dt is None:
-            continue
+    dt = _parse_release_datetime(published_at)
+    if dt is None:
+        for key in ("publishDate", "publishedDate", "publishTime", "published", "pubDate"):
+            dt = _parse_release_datetime(raw.get(key))
+            if dt is not None:
+                break
+    if dt is not None:
         return max(int((datetime.now(timezone.utc) - dt).total_seconds() // 60), 0)
     return None
 

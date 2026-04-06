@@ -279,6 +279,53 @@ class TitleDBResilienceTests(unittest.TestCase):
 
         mocked_download.assert_called_once_with(fake_zip, ["cnmts-fixed.json"])
 
+    def test_update_titledb_files_downloads_english_title_sources_when_enabled(self):
+        latest_marker = "latest_example123"
+        local_latest = os.path.join(self.titledb_dir, ".latest")
+        with open(local_latest, "w", encoding="utf-8") as fp:
+            fp.write("example123")
+        with open(os.path.join(self.titledb_dir, "cnmts.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+        with open(os.path.join(self.titledb_dir, "titles.JP.ja.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+        with open(os.path.join(self.titledb_dir, "versions.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+        with open(os.path.join(self.titledb_dir, "versions.txt"), "w", encoding="utf-8") as fp:
+            fp.write("0100000000001000|ignored|0\n")
+        with open(os.path.join(self.titledb_dir, "languages.json"), "w", encoding="utf-8") as fp:
+            fp.write("{}")
+
+        settings_with_english = {"titles": {"region": "JP", "language": "ja", "prefer_english_metadata": True}}
+        fake_zip = self._FakeRemoteZip([
+            latest_marker,
+            "cnmts.json",
+            "versions.json",
+            "versions.txt",
+            "languages.json",
+            "titles.JP.ja.json",
+            "titles.JP.en.json",
+            "titles.US.en.json",
+            "titles.GB.en.json",
+        ])
+
+        with patch.object(titledb, "TITLEDB_DIR", self.titledb_dir), \
+            patch.object(titledb, "APP_DIR", self.tmp_root), \
+            patch.object(titledb, "TITLEDB_ARTEFACTS_URL", "https://example.invalid/titledb.zip"), \
+            patch("app.titledb._get_with_retry", return_value=types.SimpleNamespace(status_code=302, headers={"Location": "https://example.invalid/direct.zip"})), \
+            patch("app.titledb.unzip_http.RemoteZipFile", return_value=fake_zip), \
+            patch("app.titledb.download_titledb_files") as mocked_download, \
+            patch("app.titledb._download_json_file", return_value=False):
+            titledb.update_titledb_files(settings_with_english)
+
+        mocked_download.assert_called_once_with(
+            fake_zip,
+            [
+                "titles.JP.en.json",
+                "titles.US.en.json",
+                "titles.GB.en.json",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

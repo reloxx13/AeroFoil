@@ -614,13 +614,13 @@
     }
 
     function getGameTitle(game) {
-        return (game && (game.title_id_name || game.name || game.title_id || game.app_id)) || '';
+        return (game && (game.title_id_name || game.title_name || game.name || game.title_id || game.app_id)) || '';
     }
 
     function getLibraryDisplayTitle(game) {
         const appType = String((game && game.app_type) || '').toUpperCase();
-        const baseTitle = String((game && (game.title_id_name || game.title_id || game.app_id)) || '').trim();
-        const contentTitle = String((game && (game.name || game.app_id || game.title_id)) || '').trim();
+        const baseTitle = String((game && (game.title_id_name || game.title_name || game.name || game.title_id || game.app_id)) || '').trim();
+        const contentTitle = String((game && (game.name || game.title_name || game.app_id || game.title_id)) || '').trim();
         if (appType === 'DLC' && baseTitle && contentTitle && contentTitle !== baseTitle) {
             return `${baseTitle} | ${contentTitle}`;
         }
@@ -1111,6 +1111,18 @@
         return value || '-';
     }
 
+    function formatPublishedAtTooltip(publishedAt) {
+        const text = String(publishedAt || '').trim();
+        if (!text) {
+            return '';
+        }
+        const date = new Date(text);
+        if (Number.isNaN(date.getTime())) {
+            return '';
+        }
+        return `Published ${date.toLocaleString()}`;
+    }
+
     function buildDownloadSearchRow(item, actionLabel, extraData = {}) {
         const row = $('<tr></tr>');
         row.append($('<td></td>').text(item?.title || '-'));
@@ -1119,7 +1131,12 @@
             row.append($('<td></td>').text(getProtocolLabel(item?.protocol)));
         }
         if (downloadUiVisibility.show_usenet_columns) {
-            row.append($('<td></td>').text(item?.age_label || '-'));
+            const ageCell = $('<td></td>').text(item?.age_label || '-');
+            const ageTooltip = formatPublishedAtTooltip(item?.published_at);
+            if (ageTooltip) {
+                ageCell.attr('title', ageTooltip);
+            }
+            row.append(ageCell);
         }
         row.append($('<td></td>').text(formatBytes(item?.size)));
         if (downloadUiVisibility.show_torrent_columns) {

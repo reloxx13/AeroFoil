@@ -116,6 +116,7 @@ _cnmts_default_index_file = os.path.join(TITLEDB_DIR, 'cnmts.index.sqlite3')
 _cnmts_fixed_index_file = os.path.join(TITLEDB_DIR, 'cnmts-fixed.index.sqlite3')
 _cnmts_index_file = _cnmts_default_index_file
 _titles_index_file = os.path.join(TITLEDB_DIR, 'titles.index.sqlite3')
+_english_titles_index_file = os.path.join(TITLEDB_DIR, 'titles.english.index.sqlite3')
 _titledb_lock = threading.Lock()
 _missing_titledb_log_lock = threading.Lock()
 _missing_titledb_last_log = {}
@@ -128,7 +129,10 @@ _missing_files_recovery_in_progress = False
 _titledb_data_signature = None
 _title_lookup_cache = {}
 _title_lookup_cache_lock = threading.Lock()
+_english_title_lookup_cache = {}
+_english_title_lookup_cache_lock = threading.Lock()
 _TITLE_LOOKUP_CACHE_MAX = 4096
+_english_titles_index_ready = False
 
 try:
     _libc = ctypes.CDLL("libc.so.6")
@@ -160,6 +164,7 @@ def _reset_titledb_state():
     global _titles_desc_by_title_id
     global _titles_images_by_title_id
     global _titles_db_loaded
+    global _english_titles_index_ready
 
     _cnmts_db = None
     _titles_db = None
@@ -173,9 +178,12 @@ def _reset_titledb_state():
     _titles_desc_db = None
     _titles_desc_by_title_id = None
     _titles_images_by_title_id = None
+    _english_titles_index_ready = False
     _titles_db_loaded = False
     with _title_lookup_cache_lock:
         _title_lookup_cache.clear()
+    with _english_title_lookup_cache_lock:
+        _english_title_lookup_cache.clear()
 
 def _load_json_file(path, label):
     try:
@@ -188,6 +196,32 @@ def _versions_source_signature(path):
     stat = os.stat(path)
     mtime_ns = getattr(stat, 'st_mtime_ns', int(stat.st_mtime * 1e9))
     return f"{int(stat.st_size)}:{int(mtime_ns)}"
+
+def _titles_sources_signature(paths):
+    parts = []
+    for path in (paths or []):
+        parts.append(f"{os.path.basename(path)}:{_versions_source_signature(path)}")
+    return "|".join(parts)
+
+def _should_prefer_english_metadata(app_settings=None):
+    settings = app_settings or load_settings()
+    titles_settings = (settings or {}).get('titles') or {}
+    return bool(titles_settings.get('prefer_english_metadata'))
+
+def _get_local_preferred_english_titles_files(app_settings=None):
+    if not _should_prefer_english_metadata(app_settings):
+        return []
+    try:
+        current_files = os.listdir(TITLEDB_DIR)
+    except FileNotFoundError:
+        return []
+    preferred_files = titledb.get_preferred_english_titles_files(app_settings or load_settings(), available_files=current_files)
+    out = []
+    for file_name in preferred_files:
+        path = os.path.join(TITLEDB_DIR, file_name)
+        if os.path.isfile(path):
+            out.append(path)
+    return out
 
 def _open_versions_index_db(path):
     conn = sqlite3.connect(path, timeout=30)
@@ -468,13 +502,16 @@ def _ensure_cnmts_index(cnmts_file):
     _release_process_memory()
     return True
 
-def _ensure_titles_index(region_titles_file):
-    global _titles_index_ready
-    expected_signature = _versions_source_signature(region_titles_file)
+def _ensure_titles_index_from_sources(source_files, index_file, log_label='titles'):
+    source_files = [path for path in (source_files or []) if path]
+    if not source_files:
+        return False
+
+    expected_signature = _titles_sources_signature(source_files)
 
     conn = None
     try:
-        conn = _open_versions_index_db(_titles_index_file)
+        conn = _open_versions_index_db(index_file)
         with conn:
             conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
             conn.execute(
@@ -493,10 +530,9 @@ def _ensure_titles_index(region_titles_file):
             signature = _read_versions_index_meta(conn, "source_signature")
             rows_count = _read_versions_index_meta(conn, "rows_count")
             if signature == expected_signature and rows_count is not None:
-                _titles_index_ready = True
                 return True
     except Exception as e:
-        logger.warning(f"Failed to validate titles index, rebuilding: {e}")
+        logger.warning(f"Failed to validate {log_label} titles index, rebuilding: {e}")
     finally:
         if conn is not None:
             try:
@@ -504,12 +540,8 @@ def _ensure_titles_index(region_titles_file):
             except Exception:
                 pass
 
-    logger.info("Building titles index from region titles...")
-    data = _load_json_file(region_titles_file, 'region_titles')
-    if not isinstance(data, dict):
-        raise ValueError("Invalid region titles file: expected object at root")
-
-    tmp_db = _titles_index_file + ".tmp"
+    logger.info("Building %s titles index from %s file(s)...", log_label, len(source_files))
+    tmp_db = index_file + ".tmp"
     try:
         if os.path.exists(tmp_db):
             os.remove(tmp_db)
@@ -537,40 +569,46 @@ def _ensure_titles_index(region_titles_file):
             batch = []
             batch_size = 5000
             order = 0
-            for item in data.values():
-                if not isinstance(item, dict):
-                    continue
-                title_id = str(item.get('id') or '').strip().upper()
-                if not title_id:
-                    continue
-                order += 1
-                name = str(item.get('name') or '').strip()
-                banner_url = str(item.get('bannerUrl') or '').strip()
-                icon_url = str(item.get('iconUrl') or '').strip()
-                category = str(item.get('category') or '').strip()
-                nsu_id_raw = item.get('nsuId')
-                nsu_id = None if nsu_id_raw is None else str(nsu_id_raw)
-                description = str(item.get('description') or '').strip() or None
-                search_hay = _normalize_title_search_text(f"{title_id} {name}")
-                batch.append((
-                    title_id,
-                    name,
-                    banner_url,
-                    icon_url,
-                    category,
-                    nsu_id,
-                    description,
-                    search_hay,
-                    int(order),
-                ))
-                if len(batch) >= batch_size:
-                    conn.executemany(
-                        "INSERT OR REPLACE INTO titles "
-                        "(title_id, name, banner_url, icon_url, category, nsu_id, description, search_hay, sort_order) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        batch,
-                    )
-                    batch.clear()
+            seen_title_ids = set()
+            for source_file in source_files:
+                data = _load_json_file(source_file, 'region_titles')
+                if not isinstance(data, dict):
+                    raise ValueError("Invalid region titles file: expected object at root")
+                for item in data.values():
+                    if not isinstance(item, dict):
+                        continue
+                    title_id = str(item.get('id') or '').strip().upper()
+                    if not title_id or title_id in seen_title_ids:
+                        continue
+                    seen_title_ids.add(title_id)
+                    order += 1
+                    name = str(item.get('name') or '').strip()
+                    banner_url = str(item.get('bannerUrl') or '').strip()
+                    icon_url = str(item.get('iconUrl') or '').strip()
+                    category = str(item.get('category') or '').strip()
+                    nsu_id_raw = item.get('nsuId')
+                    nsu_id = None if nsu_id_raw is None else str(nsu_id_raw)
+                    description = str(item.get('description') or '').strip() or None
+                    search_hay = _normalize_title_search_text(f"{title_id} {name}")
+                    batch.append((
+                        title_id,
+                        name,
+                        banner_url,
+                        icon_url,
+                        category,
+                        nsu_id,
+                        description,
+                        search_hay,
+                        int(order),
+                    ))
+                    if len(batch) >= batch_size:
+                        conn.executemany(
+                            "INSERT OR REPLACE INTO titles "
+                            "(title_id, name, banner_url, icon_url, category, nsu_id, description, search_hay, sort_order) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            batch,
+                        )
+                        batch.clear()
             if batch:
                 conn.executemany(
                     "INSERT OR REPLACE INTO titles "
@@ -593,13 +631,28 @@ def _ensure_titles_index(region_titles_file):
         except Exception:
             pass
 
-    os.replace(tmp_db, _titles_index_file)
-    _titles_index_ready = True
-    logger.info("titles index ready with %s rows.", row_count)
-    with _title_lookup_cache_lock:
-        _title_lookup_cache.clear()
+    os.replace(tmp_db, index_file)
+    logger.info("%s titles index ready with %s rows.", log_label, row_count)
     _release_process_memory()
     return True
+
+def _ensure_titles_index(region_titles_file):
+    global _titles_index_ready
+    _titles_index_ready = bool(_ensure_titles_index_from_sources([region_titles_file], _titles_index_file, log_label='primary'))
+    if _titles_index_ready:
+        with _title_lookup_cache_lock:
+            _title_lookup_cache.clear()
+    return _titles_index_ready
+
+def _ensure_english_titles_index(region_titles_files):
+    global _english_titles_index_ready
+    _english_titles_index_ready = bool(
+        _ensure_titles_index_from_sources(region_titles_files, _english_titles_index_file, log_label='english')
+    )
+    if _english_titles_index_ready:
+        with _english_title_lookup_cache_lock:
+            _english_title_lookup_cache.clear()
+    return _english_titles_index_ready
 
 def _cnmts_index_row_count():
     if not _cnmts_index_ready:
@@ -859,6 +912,7 @@ def load_titledb():
     global _titles_desc_db
     global _titles_desc_by_title_id
     global _titles_images_by_title_id
+    global _english_titles_index_ready
     global identification_in_progress_count
     global _titles_db_loaded
     global _missing_files_recovery_last_attempt_ts
@@ -909,6 +963,7 @@ def load_titledb():
         region_titles_file = dict(required_files).get('region_titles')
         versions_file = dict(required_files).get('versions')
         versions_txt_file = dict(required_files).get('versions_txt')
+        english_titles_files = _get_local_preferred_english_titles_files(app_settings)
         _cnmts_index_file = (
             _cnmts_fixed_index_file
             if os.path.basename(str(cnmts_file or '')).lower() == 'cnmts-fixed.json'
@@ -921,9 +976,12 @@ def load_titledb():
                 _cnmts_index_ready = False
                 _titles_index_ready = False
                 _versions_index_ready = False
+                _english_titles_index_ready = False
                 _ensure_versions_index(versions_file)
                 _ensure_cnmts_index(cnmts_file)
                 _ensure_titles_index(region_titles_file)
+                if english_titles_files:
+                    _ensure_english_titles_index(english_titles_files)
 
                 _cnmts_db = None
                 _titles_db = None
@@ -1035,6 +1093,7 @@ def get_titledb_diagnostics():
                 'titles_by_title_id': _titles_index_row_count() if _titles_index_ready else (len(_titles_by_title_id) if isinstance(_titles_by_title_id, dict) else 0),
                 'titles_index_rows': _titles_index_row_count(),
                 'titles_index_ready': bool(_titles_index_ready),
+                'english_titles_index_ready': bool(_english_titles_index_ready),
                 'titles_desc_by_title_id': len(_titles_desc_by_title_id) if isinstance(_titles_desc_by_title_id, dict) else 0,
                 'titles_images_by_title_id': len(_titles_images_by_title_id) if isinstance(_titles_images_by_title_id, dict) else 0,
                 'versions': _versions_index_row_count(),
@@ -1056,6 +1115,7 @@ def unload_titledb():
     global _titles_desc_db
     global _titles_desc_by_title_id
     global _titles_images_by_title_id
+    global _english_titles_index_ready
     global identification_in_progress_count
     global _titles_db_loaded
 
@@ -1078,9 +1138,12 @@ def unload_titledb():
         _titles_desc_db = None
         _titles_desc_by_title_id = None
         _titles_images_by_title_id = None
+        _english_titles_index_ready = False
         _titles_db_loaded = False
         with _title_lookup_cache_lock:
             _title_lookup_cache.clear()
+        with _english_title_lookup_cache_lock:
+            _english_title_lookup_cache.clear()
         logger.info("TitleDBs unloaded.")
 
 def identify_file_from_filename(filename):
@@ -1220,14 +1283,14 @@ def _apply_manual_title_override(title_id, info):
         out['screenshots'] = [str(u).strip() for u in screenshots if str(u or '').strip()][:12]
     return out
 
-def _get_title_info_from_index(title_key):
-    with _title_lookup_cache_lock:
-        cached = _title_lookup_cache.get(title_key)
+def _get_title_info_from_index_file(title_key, index_file, cache_store, cache_lock):
+    with cache_lock:
+        cached = cache_store.get(title_key)
         if isinstance(cached, dict):
             return dict(cached)
 
     try:
-        conn = _open_versions_index_db(_titles_index_file)
+        conn = _open_versions_index_db(index_file)
         try:
             row = conn.execute(
                 "SELECT name, banner_url, icon_url, title_id, category, nsu_id, description "
@@ -1252,19 +1315,49 @@ def _get_title_info_from_index(title_key):
         'nsuId': row[5],
         'description': row[6],
     }
-    with _title_lookup_cache_lock:
-        _title_lookup_cache[title_key] = info
-        if len(_title_lookup_cache) > _TITLE_LOOKUP_CACHE_MAX:
+    with cache_lock:
+        cache_store[title_key] = info
+        if len(cache_store) > _TITLE_LOOKUP_CACHE_MAX:
             try:
-                _title_lookup_cache.pop(next(iter(_title_lookup_cache)))
+                cache_store.pop(next(iter(cache_store)))
             except Exception:
-                _title_lookup_cache.clear()
+                cache_store.clear()
     return dict(info)
+
+def _get_title_info_from_index(title_key):
+    return _get_title_info_from_index_file(
+        title_key,
+        _titles_index_file,
+        _title_lookup_cache,
+        _title_lookup_cache_lock,
+    )
+
+def _get_english_title_info_from_index(title_key):
+    return _get_title_info_from_index_file(
+        title_key,
+        _english_titles_index_file,
+        _english_title_lookup_cache,
+        _english_title_lookup_cache_lock,
+    )
+
+def _merge_preferred_title_info(base_info, preferred_info):
+    merged = dict(base_info or {})
+    if not isinstance(preferred_info, dict):
+        return merged
+    for key in ('name', 'bannerUrl', 'iconUrl', 'id', 'category', 'nsuId', 'description'):
+        value = preferred_info.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            continue
+        merged[key] = value
+    return merged
 
 def get_game_info(title_id):
     global _titles_db
     global _titles_by_title_id
     global _titles_index_ready
+    global _english_titles_index_ready
     global _titles_desc_by_title_id
     global _titles_images_by_title_id
     if not _titles_index_ready and _titles_db is None and _titles_by_title_id is None:
@@ -1291,10 +1384,15 @@ def get_game_info(title_id):
                 if (item.get('id') or '').strip().upper() == title_key:
                     title_info = item
                     break
-        if title_info is None:
+        preferred_title_info = None
+        if _english_titles_index_ready and _should_prefer_english_metadata():
+            preferred_title_info = _get_english_title_info_from_index(title_key)
+
+        resolved_title_info = _merge_preferred_title_info(title_info, preferred_title_info)
+        if not resolved_title_info:
             raise KeyError(title_id)
 
-        description = (title_info.get('description') or '').strip() or None
+        description = (resolved_title_info.get('description') or '').strip() or None
         if not description and isinstance(_titles_desc_by_title_id, dict):
             try:
                 description = (_titles_desc_by_title_id.get(title_key) or '').strip() or None
@@ -1308,12 +1406,12 @@ def get_game_info(title_id):
             except Exception:
                 screenshots = []
         return _apply_manual_title_override(title_id, {
-            'name': title_info['name'],
-            'bannerUrl': title_info['bannerUrl'],
-            'iconUrl': title_info['iconUrl'],
-            'id': title_info['id'],
-            'category': title_info['category'],
-            'nsuId': title_info.get('nsuId'),
+            'name': resolved_title_info.get('name') or 'Unrecognized',
+            'bannerUrl': resolved_title_info.get('bannerUrl') or '//placehold.it/400x200',
+            'iconUrl': resolved_title_info.get('iconUrl') or '',
+            'id': resolved_title_info.get('id') or title_key,
+            'category': resolved_title_info.get('category') or '',
+            'nsuId': resolved_title_info.get('nsuId'),
             'description': description,
             'screenshots': screenshots,
         })

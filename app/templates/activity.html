@@ -1,7 +1,4 @@
-{% extends 'base.html' %}
-
-{% block content %}
-{% include 'nav.html' %}
+{% extends 'base.html' %} {% block content %} {% include 'nav.html' %}
 
 <style>
     :root {
@@ -69,9 +66,8 @@
         height: 100%;
         display: flex;
         flex-direction: column;
-        gap: 0.75rem;
-        padding-top: 0.75rem;
-        padding-bottom: 0.75rem;
+        gap: 0.85rem;
+        padding: 0.75rem 1rem 1rem;
     }
 
     .activity-pane-wrap {
@@ -82,13 +78,13 @@
 
     #activityNav .nav-link {
         color: rgba(255, 255, 255, 0.75);
-        padding: 0.75rem 1rem;
-        border-radius: 0.375rem;
+        padding: 0.8rem 1rem;
+        border-radius: 0.5rem;
         margin-bottom: 0.25rem;
         transition: all 0.2s ease;
         display: flex;
-        align-items: center;
-        gap: 0.45rem;
+        align-items: flex-start;
+        gap: 0.7rem;
     }
 
     #activityNav .nav-link:hover {
@@ -106,25 +102,53 @@
         width: 16px;
         text-align: center;
         flex-shrink: 0;
+        margin-top: 0.1rem;
+        margin-right: 0.5rem;
+    }
+
+    .activity-nav-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+
+    .activity-nav-title {
+        line-height: 1.2;
+    }
+
+    .activity-nav-subtitle {
+        color: var(--activity-muted);
+        font-size: 0.78rem;
+        line-height: 1.25;
     }
 
     .activity-header {
         border: 1px solid var(--activity-border);
-        border-radius: 16px;
+        border-radius: var(--aerofoil-card-radius);
         padding: 1rem 1.1rem;
         background: var(--activity-surface-2);
+        box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.08);
     }
 
     .activity-subtitle {
         color: var(--activity-muted);
     }
 
+    .activity-page-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
     .activity-kpi {
         border: 1px solid var(--activity-border);
-        border-radius: 14px;
+        border-radius: var(--aerofoil-card-radius-tight);
         background: var(--activity-surface-2);
         padding: 0.8rem 1rem;
         min-height: 82px;
+        box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.06);
     }
 
     .activity-kpi-label {
@@ -143,9 +167,18 @@
 
     .activity-section {
         border: 1px solid var(--activity-border);
-        border-radius: 16px;
+        border-radius: var(--aerofoil-card-radius);
         background: var(--activity-surface-1);
         padding: 1rem;
+        box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.08);
+    }
+
+    .activity-card {
+        border: 0;
+        border-radius: 0 !important;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
     }
 
     .activity-section-head {
@@ -160,12 +193,6 @@
     .activity-section-subtitle {
         color: var(--activity-muted);
         font-size: 0.85rem;
-    }
-
-    .activity-card {
-        border: 0;
-        border-radius: 0;
-        background: transparent;
     }
 
     .activity-card .card-body {
@@ -336,6 +363,7 @@
 
         .activity-header {
             padding: 0.85rem;
+            margin-bottom: 0.85rem;
         }
 
         .activity-section {
@@ -375,7 +403,7 @@
         }
 
         body.activity-sidebar-open::before {
-            content: '';
+            content: "";
             position: fixed;
             top: var(--activity-nav-h);
             left: 0;
@@ -397,8 +425,7 @@
         .activity-main-inner {
             height: auto;
             display: block;
-            padding-top: 0.75rem;
-            padding-bottom: 0.75rem;
+            padding: 0.75rem;
         }
 
         .activity-pane-wrap {
@@ -419,378 +446,840 @@
 
 <div class="activity-body">
     <div class="row g-0 activity-shell-row">
-        <div class="col-md-3 col-lg-2 border-end" id="activitySidebar">
-            <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
-                <h5 class="mb-0">Activity</h5>
-                <button class="btn btn-sm d-md-none" type="button" id="activitySidebarToggle" aria-label="Toggle activity sidebar">
+        <div class="col-md-3 col-xl-2" id="activitySidebar">
+            <div
+                class="d-flex align-items-center justify-content-between p-3 border-bottom"
+            >
+                <div>
+                    <h5 class="mb-0">Activity</h5>
+                    <div class="text-muted small">Audit and monitoring</div>
+                </div>
+                <button
+                    class="btn btn-sm d-md-none"
+                    type="button"
+                    id="activitySidebarToggle"
+                    aria-label="Toggle activity sidebar"
+                >
                     <i class="bi bi-list"></i>
                 </button>
             </div>
             <nav class="nav flex-column p-2" id="activityNav">
-                <a class="nav-link active" href="#" data-section="overview"><i class="bi bi-grid-1x2"></i>Overview</a>
-                <a class="nav-link" href="#" data-section="realtime"><i class="bi bi-activity"></i>Realtime</a>
-                <a class="nav-link" href="#" data-section="access"><i class="bi bi-clock-history"></i>Access History</a>
-                <a class="nav-link" href="#" data-section="blocked"><i class="bi bi-slash-circle"></i>Blocked IPs</a>
-                <a class="nav-link" href="#" data-section="clients"><i class="bi bi-phone"></i>Client History</a>
-                <a class="nav-link" href="#" data-section="lockouts"><i class="bi bi-shield-lock"></i>Lockouts</a>
+                <a class="nav-link active" href="#" data-section="overview"
+                    ><i class="bi bi-grid-1x2"></i
+                    ><span class="activity-nav-copy"
+                        ><span class="activity-nav-title">Overview</span
+                        ><span class="activity-nav-subtitle"
+                            >KPIs and section shortcuts</span
+                        ></span
+                    ></a
+                >
+                <a class="nav-link" href="#" data-section="realtime"
+                    ><i class="bi bi-activity"></i
+                    ><span class="activity-nav-copy"
+                        ><span class="activity-nav-title">Realtime</span
+                        ><span class="activity-nav-subtitle"
+                            >Live sessions and connected clients</span
+                        ></span
+                    ></a
+                >
+                <a class="nav-link" href="#" data-section="access"
+                    ><i class="bi bi-clock-history"></i
+                    ><span class="activity-nav-copy"
+                        ><span class="activity-nav-title">Access History</span
+                        ><span class="activity-nav-subtitle"
+                            >Transfer and shop audit trail</span
+                        ></span
+                    ></a
+                >
+                <a class="nav-link" href="#" data-section="blocked"
+                    ><i class="bi bi-slash-circle"></i
+                    ><span class="activity-nav-copy"
+                        ><span class="activity-nav-title">Blocked IPs</span
+                        ><span class="activity-nav-subtitle"
+                            >Permanent blacklist hits</span
+                        ></span
+                    ></a
+                >
+                <a class="nav-link" href="#" data-section="clients"
+                    ><i class="bi bi-phone"></i
+                    ><span class="activity-nav-copy"
+                        ><span class="activity-nav-title">Client History</span
+                        ><span class="activity-nav-subtitle"
+                            >Devices, user-agents, and metadata</span
+                        ></span
+                    ></a
+                >
+                <a class="nav-link" href="#" data-section="lockouts"
+                    ><i class="bi bi-shield-lock"></i
+                    ><span class="activity-nav-copy"
+                        ><span class="activity-nav-title">Lockouts</span
+                        ><span class="activity-nav-subtitle"
+                            >Failed-login IP lockouts</span
+                        ></span
+                    ></a
+                >
             </nav>
         </div>
 
-        <div class="col-md-9 col-lg-10 activity-main-col">
-            <div class="d-md-none p-3 border-bottom">
-                <button class="btn btn-outline-secondary" type="button" id="activitySidebarToggleMobile" aria-label="Toggle activity sidebar">
-                    <i class="bi bi-list"></i> Sections
-                </button>
-            </div>
-
+        <div class="col-md-9 col-xl-10 activity-main-col">
             <div class="container-fluid activity-main-inner">
                 <div class="activity-header">
-                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                    <div
+                        class="d-flex flex-wrap align-items-start justify-content-between gap-2"
+                    >
                         <div>
-                            <h2 class="mb-0">Activity</h2>
-                            <div class="activity-subtitle small">Realtime client and transfer monitoring with persistent audit logs</div>
+                            <h2 class="mb-2">Activity</h2>
+                            <div class="activity-subtitle small">
+                                Realtime monitoring, persistent audit logs, and
+                                access control telemetry in one workspace
+                            </div>
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                            <span class="badge text-bg-secondary" id="lastRefreshLabel">Last update: -</span>
-                            <span class="badge text-bg-secondary">Live: 2.5s</span>
-                            <span class="badge text-bg-secondary">History: 15s</span>
-                            <button type="button" class="btn btn-outline-primary btn-sm" id="refreshNowBtn">
-                                <i class="bi bi-arrow-clockwise"></i> Refresh now
+                        <div class="activity-page-meta">
+                            <button
+                                class="btn btn-outline-secondary btn-sm d-md-none"
+                                type="button"
+                                id="activitySidebarToggleMobile"
+                                aria-label="Toggle activity sidebar"
+                            >
+                                <i class="bi bi-list"></i> Sections
+                            </button>
+                            <span
+                                class="badge text-bg-secondary"
+                                id="lastRefreshLabel"
+                                >Last update: -</span
+                            >
+                            <span class="badge text-bg-secondary"
+                                >Live: 2.5s</span
+                            >
+                            <span class="badge text-bg-secondary"
+                                >History: 15s</span
+                            >
+                            <button
+                                type="button"
+                                class="btn btn-outline-primary btn-sm"
+                                id="refreshNowBtn"
+                            >
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                                now
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div id="activityAlert" class="alert alert-danger d-none mt-3 mb-0" role="alert"></div>
+                <div
+                    id="activityAlert"
+                    class="alert alert-danger d-none mt-3 mb-0"
+                    role="alert"
+                ></div>
 
                 <div class="activity-pane-wrap">
-                <div class="activity-section-pane" id="section-overview" data-section="overview">
-                    <div class="row g-3">
-                        <div class="col-sm-6 col-xl-3">
-                            <div class="activity-kpi">
-                                <div class="activity-kpi-label">Live Transfers</div>
-                                <div class="activity-kpi-value" id="kpiLiveTransfers">0</div>
+                    <div
+                        class="activity-section-pane"
+                        id="section-overview"
+                        data-section="overview"
+                    >
+                        <div class="row g-3">
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="activity-kpi">
+                                    <div class="activity-kpi-label">
+                                        Live Transfers
+                                    </div>
+                                    <div
+                                        class="activity-kpi-value"
+                                        id="kpiLiveTransfers"
+                                    >
+                                        0
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-sm-6 col-xl-3">
-                            <div class="activity-kpi">
-                                <div class="activity-kpi-label">Connected Clients</div>
-                                <div class="activity-kpi-value" id="kpiConnectedClients">0</div>
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="activity-kpi">
+                                    <div class="activity-kpi-label">
+                                        Connected Clients
+                                    </div>
+                                    <div
+                                        class="activity-kpi-value"
+                                        id="kpiConnectedClients"
+                                    >
+                                        0
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-sm-6 col-xl-3">
-                            <div class="activity-kpi">
-                                <div class="activity-kpi-label">Access Rows</div>
-                                <div class="activity-kpi-value" id="kpiAccessRows">0</div>
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="activity-kpi">
+                                    <div class="activity-kpi-label">
+                                        Access Rows
+                                    </div>
+                                    <div
+                                        class="activity-kpi-value"
+                                        id="kpiAccessRows"
+                                    >
+                                        0
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-sm-6 col-xl-3">
-                            <div class="activity-kpi">
-                                <div class="activity-kpi-label">Client History Rows</div>
-                                <div class="activity-kpi-value" id="kpiClientHistoryRows">0</div>
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="activity-kpi">
+                                    <div class="activity-kpi-label">
+                                        Client History Rows
+                                    </div>
+                                    <div
+                                        class="activity-kpi-value"
+                                        id="kpiClientHistoryRows"
+                                    >
+                                        0
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-sm-6 col-xl-3">
-                            <div class="activity-kpi">
-                                <div class="activity-kpi-label">Locked IPs</div>
-                                <div class="activity-kpi-value" id="kpiLockedIps">0</div>
+                            <div class="col-sm-6 col-xl-3">
+                                <div class="activity-kpi">
+                                    <div class="activity-kpi-label">
+                                        Locked IPs
+                                    </div>
+                                    <div
+                                        class="activity-kpi-value"
+                                        id="kpiLockedIps"
+                                    >
+                                        0
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="activity-section">
-                                <div class="activity-section-head mb-0">
-                                    <div>
-                                        <h5 class="mb-0">Overview</h5>
-                                        <div class="activity-section-subtitle">Use the left sidebar to focus on one data set at a time</div>
+                            <div class="col-12">
+                                <div class="activity-section">
+                                    <div class="activity-section-head mb-0">
+                                        <div>
+                                            <h5 class="mb-0">Overview</h5>
+                                            <div
+                                                class="activity-section-subtitle"
+                                            >
+                                                Use the left sidebar to focus on
+                                                one data set at a time
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="activity-section-pane d-none" id="section-realtime" data-section="realtime">
-                    <section class="activity-section">
-                        <div class="activity-section-head">
-                            <div>
-                                <h5 class="mb-0">Realtime Monitor</h5>
-                                <div class="activity-section-subtitle">Current transfer sessions and recently seen clients</div>
+                    <div
+                        class="activity-section-pane d-none"
+                        id="section-realtime"
+                        data-section="realtime"
+                    >
+                        <section class="activity-section">
+                            <div class="activity-section-head">
+                                <div>
+                                    <h5 class="mb-0">Realtime Monitor</h5>
+                                    <div class="activity-section-subtitle">
+                                        Current transfer sessions and recently
+                                        seen clients
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="row g-3">
-                            <div class="col-xl-6">
-                                <div class="card activity-card">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <h6 class="card-title mb-0">Live transfers</h6>
-                                            <span class="badge text-bg-secondary" id="liveTransfersCount">0</span>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="activity-card">
+                                        <div class="card-body">
+                                            <div
+                                                class="d-flex align-items-center justify-content-between"
+                                            >
+                                                <h6 class="card-title mb-0">
+                                                    Live transfers
+                                                </h6>
+                                                <span
+                                                    class="badge text-bg-secondary"
+                                                    id="liveTransfersCount"
+                                                    >0</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="table-responsive mt-3 activity-scroll-full"
+                                            >
+                                                <table
+                                                    class="table table-sm table-striped align-middle activity-table"
+                                                >
+                                                    <thead>
+                                                        <tr>
+                                                            <th scope="col">
+                                                                Started
+                                                            </th>
+                                                            <th scope="col">
+                                                                User
+                                                            </th>
+                                                            <th scope="col">
+                                                                Remote
+                                                            </th>
+                                                            <th scope="col">
+                                                                Location
+                                                            </th>
+                                                            <th scope="col">
+                                                                Title
+                                                            </th>
+                                                            <th scope="col">
+                                                                File
+                                                            </th>
+                                                            <th scope="col">
+                                                                Sent
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody
+                                                        id="liveTransfersBody"
+                                                    >
+                                                        <tr>
+                                                            <td
+                                                                colspan="7"
+                                                                class="table-muted-empty"
+                                                            >
+                                                                Loading...
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
-                                        <div class="table-responsive mt-3 activity-scroll-full">
-                                            <table class="table table-sm table-striped align-middle activity-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th scope="col">Started</th>
-                                                        <th scope="col">User</th>
-                                                        <th scope="col">Remote</th>
-                                                        <th scope="col">Location</th>
-                                                        <th scope="col">Title</th>
-                                                        <th scope="col">File</th>
-                                                        <th scope="col">Sent</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="liveTransfersBody">
-                                                    <tr><td colspan="7" class="table-muted-empty">Loading...</td></tr>
-                                                </tbody>
-                                            </table>
+                                    </div>
+                                </div>
+
+                                <div class="col-12">
+                                    <div class="activity-card">
+                                        <div class="card-body">
+                                            <div
+                                                class="d-flex align-items-center justify-content-between"
+                                            >
+                                                <h6 class="card-title mb-0">
+                                                    Connected clients
+                                                </h6>
+                                                <span
+                                                    class="badge text-bg-secondary"
+                                                    id="connectedClientsCount"
+                                                    >0</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="table-responsive mt-3 activity-scroll-full"
+                                            >
+                                                <table
+                                                    class="table table-sm table-striped align-middle activity-table"
+                                                >
+                                                    <thead>
+                                                        <tr>
+                                                            <th scope="col">
+                                                                Last seen
+                                                            </th>
+                                                            <th scope="col">
+                                                                User
+                                                            </th>
+                                                            <th scope="col">
+                                                                Remote
+                                                            </th>
+                                                            <th scope="col">
+                                                                Location
+                                                            </th>
+                                                            <th scope="col">
+                                                                User-Agent
+                                                            </th>
+                                                            <th scope="col">
+                                                                Client details
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody
+                                                        id="connectedClientsBody"
+                                                    >
+                                                        <tr>
+                                                            <td
+                                                                colspan="6"
+                                                                class="table-muted-empty"
+                                                            >
+                                                                Loading...
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </section>
+                    </div>
 
-                            <div class="col-xl-6">
-                                <div class="card activity-card">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <h6 class="card-title mb-0">Connected clients</h6>
-                                            <span class="badge text-bg-secondary" id="connectedClientsCount">0</span>
+                    <div
+                        class="activity-section-pane d-none"
+                        id="section-access"
+                        data-section="access"
+                    >
+                        <section class="activity-section">
+                            <div class="activity-section-head">
+                                <div>
+                                    <h5 class="mb-0">Access History</h5>
+                                    <div class="activity-section-subtitle">
+                                        Searchable and sortable recent
+                                        transfer/shop activity
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="activity-card">
+                                <div class="card-body">
+                                    <div class="activity-toolbar">
+                                        <div>
+                                            <h6 class="card-title mb-0">
+                                                Access history
+                                                <span
+                                                    class="badge text-bg-secondary ms-1"
+                                                    id="accessHistoryCount"
+                                                    >0</span
+                                                >
+                                            </h6>
+                                            <div
+                                                class="activity-section-subtitle"
+                                            >
+                                                Recent transfers and shop
+                                                activity
+                                            </div>
                                         </div>
-                                        <div class="table-responsive mt-3 activity-scroll-full">
-                                            <table class="table table-sm table-striped align-middle activity-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th scope="col">Last seen</th>
-                                                        <th scope="col">User</th>
-                                                        <th scope="col">Remote</th>
-                                                        <th scope="col">Location</th>
-                                                        <th scope="col">User-Agent</th>
-                                                        <th scope="col">Client details</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="connectedClientsBody">
-                                                    <tr><td colspan="6" class="table-muted-empty">Loading...</td></tr>
-                                                </tbody>
-                                            </table>
+                                        <div class="activity-toolbar-group">
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                id="clearAccessHistoryBtn"
+                                            >
+                                                <i class="bi bi-trash"></i>
+                                                Clear log
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-secondary btn-sm"
+                                                id="exportAccessHistoryBtn"
+                                            >
+                                                <i class="bi bi-download"></i>
+                                                Export CSV
+                                            </button>
+                                            <input
+                                                id="accessSearch"
+                                                class="form-control form-control-sm"
+                                                style="width: 260px"
+                                                placeholder="Search by user, title, file, IP, kind"
+                                                autocomplete="off"
+                                            />
+                                            <label
+                                                class="text-muted small mb-0"
+                                                for="activityLimit"
+                                                >Rows</label
+                                            >
+                                            <select
+                                                id="activityLimit"
+                                                class="form-select form-select-sm"
+                                                style="width: 90px"
+                                            >
+                                                <option value="50">50</option>
+                                                <option value="100" selected>
+                                                    100
+                                                </option>
+                                                <option value="250">250</option>
+                                                <option value="1000">
+                                                    1000
+                                                </option>
+                                                <option value="5000">
+                                                    5000
+                                                </option>
+                                                <option value="10000">
+                                                    10000
+                                                </option>
+                                            </select>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                <div class="activity-section-pane d-none" id="section-access" data-section="access">
-                    <section class="activity-section">
-                        <div class="activity-section-head">
-                            <div>
-                                <h5 class="mb-0">Access History</h5>
-                                <div class="activity-section-subtitle">Searchable and sortable recent transfer/shop activity</div>
-                            </div>
-                        </div>
-
-                        <div class="card activity-card">
-                            <div class="card-body">
-                                <div class="activity-toolbar">
-                                    <div>
-                                        <h6 class="card-title mb-0">Access history <span class="badge text-bg-secondary ms-1" id="accessHistoryCount">0</span></h6>
-                                        <div class="activity-section-subtitle">Recent transfers and shop activity</div>
-                                    </div>
-                                    <div class="activity-toolbar-group">
-                                        <button type="button" class="btn btn-outline-danger btn-sm" id="clearAccessHistoryBtn">
-                                            <i class="bi bi-trash"></i> Clear log
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="exportAccessHistoryBtn">
-                                            <i class="bi bi-download"></i> Export CSV
-                                        </button>
-                                        <input
-                                            id="accessSearch"
-                                            class="form-control form-control-sm"
-                                            style="width: 260px;"
-                                            placeholder="Search by user, title, file, IP, kind"
-                                            autocomplete="off"
-                                        />
-                                        <label class="text-muted small mb-0" for="activityLimit">Rows</label>
-                                        <select id="activityLimit" class="form-select form-select-sm" style="width: 90px;">
-                                            <option value="50">50</option>
-                                            <option value="100" selected>100</option>
-                                            <option value="250">250</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="table-responsive mt-3 activity-scroll-full">
-                                    <table class="table table-sm table-striped align-middle activity-table">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col" class="sortable" data-sort-key="at">When</th>
-                                                <th scope="col" class="sortable" data-sort-key="kind">Kind</th>
-                                                <th scope="col" class="sortable" data-sort-key="user">User</th>
-                                                <th scope="col" class="sortable" data-sort-key="remote_addr">Remote</th>
-                                                <th scope="col" class="sortable" data-sort-key="country">Location</th>
-                                                <th scope="col" class="sortable" data-sort-key="title_id">Title</th>
-                                                <th scope="col" class="sortable" data-sort-key="filename">File</th>
-                                                <th scope="col" class="sortable" data-sort-key="bytes_sent">Bytes</th>
-                                                <th scope="col" class="sortable" data-sort-key="ok">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="accessHistoryBody">
-                                            <tr><td colspan="9" class="table-muted-empty">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-
-                <div class="activity-section-pane d-none" id="section-clients" data-section="clients">
-                    <section class="activity-section">
-                        <div class="activity-section-head">
-                            <div>
-                                <h5 class="mb-0">Client History</h5>
-                                <div class="activity-section-subtitle">Persisted log of connected clients and metadata</div>
-                            </div>
-                        </div>
-
-                        <div class="card activity-card">
-                            <div class="card-body">
-                                <div class="activity-toolbar">
-                                    <div>
-                                        <h6 class="card-title mb-0">Client history <span class="badge text-bg-secondary ms-1" id="clientHistoryCount">0</span></h6>
-                                        <div class="activity-section-subtitle">Persisted log of connected clients</div>
-                                    </div>
-                                    <div class="activity-toolbar-group">
-                                        <button type="button" class="btn btn-outline-danger btn-sm" id="clearClientsHistoryBtn">
-                                            <i class="bi bi-trash"></i> Clear log
-                                        </button>
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="exportClientsHistoryBtn">
-                                            <i class="bi bi-download"></i> Export CSV
-                                        </button>
-                                        <label class="text-muted small mb-0" for="clientsHistoryLimit">Rows</label>
-                                        <select id="clientsHistoryLimit" class="form-select form-select-sm" style="width: 90px;">
-                                            <option value="100">100</option>
-                                            <option value="250" selected>250</option>
-                                            <option value="500">500</option>
-                                            <option value="2000">2000</option>
-                                        </select>
+                                    <div
+                                        class="table-responsive mt-3 activity-scroll-full"
+                                    >
+                                        <table
+                                            class="table table-sm table-striped align-middle activity-table"
+                                        >
+                                            <thead>
+                                                <tr>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="at"
+                                                    >
+                                                        When
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="kind"
+                                                    >
+                                                        Kind
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="user"
+                                                    >
+                                                        User
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="remote_addr"
+                                                    >
+                                                        Remote
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="country"
+                                                    >
+                                                        Location
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="title_id"
+                                                    >
+                                                        Title
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="filename"
+                                                    >
+                                                        File
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="bytes_sent"
+                                                    >
+                                                        Bytes
+                                                    </th>
+                                                    <th
+                                                        scope="col"
+                                                        class="sortable"
+                                                        data-sort-key="ok"
+                                                    >
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="accessHistoryBody">
+                                                <tr>
+                                                    <td
+                                                        colspan="9"
+                                                        class="table-muted-empty"
+                                                    >
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
-                                <div class="table-responsive mt-3 activity-scroll-full">
-                                    <table class="table table-sm table-striped align-middle activity-table">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">When</th>
-                                                <th scope="col">User</th>
-                                                <th scope="col">Remote</th>
-                                                <th scope="col">Location</th>
-                                                <th scope="col">User-Agent</th>
-                                                <th scope="col">Client details</th>
-                                                <th scope="col"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="clientsHistoryBody">
-                                            <tr><td colspan="7" class="table-muted-empty">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
                             </div>
-                        </div>
-                    </section>
-                </div>
+                        </section>
+                    </div>
 
-                <div class="activity-section-pane d-none" id="section-blocked" data-section="blocked">
-                    <section class="activity-section">
-                        <div class="activity-section-head">
-                            <div>
-                                <h5 class="mb-0">Blocked IPs</h5>
-                                <div class="activity-section-subtitle">Requests blocked by the permanent IP blacklist</div>
-                            </div>
-                        </div>
-
-                        <div class="card activity-card">
-                            <div class="card-body">
-                                <div class="activity-toolbar">
-                                    <div>
-                                        <h6 class="card-title mb-0">Blocked requests <span class="badge text-bg-secondary ms-1" id="blockedIpsCount">0</span></h6>
-                                        <div class="activity-section-subtitle">404 responses returned for blacklisted IPs</div>
-                                    </div>
-                                    <div class="activity-toolbar-group">
-                                        <input
-                                            id="blockedIpsSearch"
-                                            class="form-control form-control-sm"
-                                            style="width: 260px;"
-                                            placeholder="Search by IP, path, UA"
-                                            autocomplete="off"
-                                        />
+                    <div
+                        class="activity-section-pane d-none"
+                        id="section-clients"
+                        data-section="clients"
+                    >
+                        <section class="activity-section">
+                            <div class="activity-section-head">
+                                <div>
+                                    <h5 class="mb-0">Client History</h5>
+                                    <div class="activity-section-subtitle">
+                                        Persisted log of connected clients and
+                                        metadata
                                     </div>
                                 </div>
-                                <div class="table-responsive mt-3 activity-scroll-full">
-                                    <table class="table table-sm table-striped align-middle activity-table">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">When</th>
-                                                <th scope="col">Remote</th>
-                                                <th scope="col">Location</th>
-                                                <th scope="col">Path</th>
-                                                <th scope="col">User-Agent</th>
-                                                <th scope="col">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="blockedIpsBody">
-                                            <tr><td colspan="6" class="table-muted-empty">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
-                                </div>
                             </div>
-                        </div>
-                    </section>
-                </div>
-                
-                <div class="activity-section-pane d-none" id="section-lockouts" data-section="lockouts">
-                    <section class="activity-section">
-                        <div class="activity-section-head">
-                            <div>
-                                <h5 class="mb-0">Login Lockouts</h5>
-                                <div class="activity-section-subtitle">Current temporary IP lockouts from failed authentication attempts</div>
-                            </div>
-                        </div>
 
-                        <div class="card activity-card">
-                            <div class="card-body">
-                                <div class="activity-toolbar">
-                                    <div>
-                                        <h6 class="card-title mb-0">Temporary lockouts <span class="badge text-bg-secondary ms-1" id="authLockoutsCountActivity">0</span></h6>
-                                        <div class="activity-section-subtitle">Unlock individual IPs or clear all temporary lockouts</div>
+                            <div class="activity-card">
+                                <div class="card-body">
+                                    <div class="activity-toolbar">
+                                        <div>
+                                            <h6 class="card-title mb-0">
+                                                Client history
+                                                <span
+                                                    class="badge text-bg-secondary ms-1"
+                                                    id="clientHistoryCount"
+                                                    >0</span
+                                                >
+                                            </h6>
+                                            <div
+                                                class="activity-section-subtitle"
+                                            >
+                                                Persisted log of connected
+                                                clients
+                                            </div>
+                                        </div>
+                                        <div class="activity-toolbar-group">
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                id="clearClientsHistoryBtn"
+                                            >
+                                                <i class="bi bi-trash"></i>
+                                                Clear log
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-secondary btn-sm"
+                                                id="exportClientsHistoryBtn"
+                                            >
+                                                <i class="bi bi-download"></i>
+                                                Export CSV
+                                            </button>
+                                            <label
+                                                class="text-muted small mb-0"
+                                                for="clientsHistoryLimit"
+                                                >Rows</label
+                                            >
+                                            <select
+                                                id="clientsHistoryLimit"
+                                                class="form-select form-select-sm"
+                                                style="width: 90px"
+                                            >
+                                                <option value="100">100</option>
+                                                <option value="250" selected>
+                                                    250
+                                                </option>
+                                                <option value="500">500</option>
+                                                <option value="2000">
+                                                    2000
+                                                </option>
+                                                <option value="5000">
+                                                    5000
+                                                </option>
+                                                <option value="10000">
+                                                    10000
+                                                </option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div class="activity-toolbar-group">
-                                        <button type="button" class="btn btn-outline-secondary btn-sm" id="refreshAuthLockoutsBtnActivity">
-                                            <i class="bi bi-arrow-clockwise"></i> Refresh
-                                        </button>
-                                        <button type="button" class="btn btn-outline-danger btn-sm" id="unlockAllAuthLockoutsBtnActivity">
-                                            <i class="bi bi-unlock"></i> Unlock all
-                                        </button>
+                                    <div
+                                        class="table-responsive mt-3 activity-scroll-full"
+                                    >
+                                        <table
+                                            class="table table-sm table-striped align-middle activity-table"
+                                        >
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">When</th>
+                                                    <th scope="col">User</th>
+                                                    <th scope="col">Remote</th>
+                                                    <th scope="col">
+                                                        Location
+                                                    </th>
+                                                    <th scope="col">
+                                                        User-Agent
+                                                    </th>
+                                                    <th scope="col">
+                                                        Client details
+                                                    </th>
+                                                    <th scope="col"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="clientsHistoryBody">
+                                                <tr>
+                                                    <td
+                                                        colspan="7"
+                                                        class="table-muted-empty"
+                                                    >
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                </div>
-
-                                <div class="table-responsive mt-3 activity-scroll-full">
-                                    <table class="table table-sm table-striped align-middle activity-table">
-                                        <thead>
-                                            <tr>
-                                                <th scope="col">IP</th>
-                                                <th scope="col">Remaining</th>
-                                                <th scope="col">Last failed</th>
-                                                <th scope="col">Attempts</th>
-                                                <th scope="col">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="authLockoutsBodyActivity">
-                                            <tr><td colspan="5" class="table-muted-empty">Loading...</td></tr>
-                                        </tbody>
-                                    </table>
                                 </div>
                             </div>
-                        </div>
-                    </section>
-                </div>
+                        </section>
+                    </div>
+
+                    <div
+                        class="activity-section-pane d-none"
+                        id="section-blocked"
+                        data-section="blocked"
+                    >
+                        <section class="activity-section">
+                            <div class="activity-section-head">
+                                <div>
+                                    <h5 class="mb-0">Blocked IPs</h5>
+                                    <div class="activity-section-subtitle">
+                                        Requests blocked by IP blacklist and
+                                        country rules
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="activity-card">
+                                <div class="card-body">
+                                    <div class="activity-toolbar">
+                                        <div>
+                                            <h6 class="card-title mb-0">
+                                                Blocked requests
+                                                <span
+                                                    class="badge text-bg-secondary ms-1"
+                                                    id="blockedIpsCount"
+                                                    >0</span
+                                                >
+                                            </h6>
+                                            <div
+                                                class="activity-section-subtitle"
+                                            >
+                                                404 responses returned for
+                                                denied IP or country rules
+                                            </div>
+                                        </div>
+                                        <div class="activity-toolbar-group">
+                                            <input
+                                                id="blockedIpsSearch"
+                                                class="form-control form-control-sm"
+                                                style="width: 260px"
+                                                placeholder="Search by IP, path, UA"
+                                                autocomplete="off"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div
+                                        class="table-responsive mt-3 activity-scroll-full"
+                                    >
+                                        <table
+                                            class="table table-sm table-striped align-middle activity-table"
+                                        >
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">When</th>
+                                                    <th scope="col">Remote</th>
+                                                    <th scope="col">
+                                                        Location
+                                                    </th>
+                                                    <th scope="col">Path</th>
+                                                    <th scope="col">
+                                                        User-Agent
+                                                    </th>
+                                                    <th scope="col">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="blockedIpsBody">
+                                                <tr>
+                                                    <td
+                                                        colspan="6"
+                                                        class="table-muted-empty"
+                                                    >
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div
+                        class="activity-section-pane d-none"
+                        id="section-lockouts"
+                        data-section="lockouts"
+                    >
+                        <section class="activity-section">
+                            <div class="activity-section-head">
+                                <div>
+                                    <h5 class="mb-0">Login Lockouts</h5>
+                                    <div class="activity-section-subtitle">
+                                        Current temporary IP lockouts from
+                                        failed authentication attempts
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="activity-card">
+                                <div class="card-body">
+                                    <div class="activity-toolbar">
+                                        <div>
+                                            <h6 class="card-title mb-0">
+                                                Temporary lockouts
+                                                <span
+                                                    class="badge text-bg-secondary ms-1"
+                                                    id="authLockoutsCountActivity"
+                                                    >0</span
+                                                >
+                                            </h6>
+                                            <div
+                                                class="activity-section-subtitle"
+                                            >
+                                                Unlock individual IPs or clear
+                                                all temporary lockouts
+                                            </div>
+                                        </div>
+                                        <div class="activity-toolbar-group">
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-secondary btn-sm"
+                                                id="refreshAuthLockoutsBtnActivity"
+                                            >
+                                                <i
+                                                    class="bi bi-arrow-clockwise"
+                                                ></i>
+                                                Refresh
+                                            </button>
+                                            <button
+                                                type="button"
+                                                class="btn btn-outline-danger btn-sm"
+                                                id="unlockAllAuthLockoutsBtnActivity"
+                                            >
+                                                <i class="bi bi-unlock"></i>
+                                                Unlock all
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="table-responsive mt-3 activity-scroll-full"
+                                    >
+                                        <table
+                                            class="table table-sm table-striped align-middle activity-table"
+                                        >
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col">IP</th>
+                                                    <th scope="col">
+                                                        Remaining
+                                                    </th>
+                                                    <th scope="col">
+                                                        Last failed
+                                                    </th>
+                                                    <th scope="col">
+                                                        Attempts
+                                                    </th>
+                                                    <th scope="col">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody
+                                                id="authLockoutsBodyActivity"
+                                            >
+                                                <tr>
+                                                    <td
+                                                        colspan="5"
+                                                        class="table-muted-empty"
+                                                    >
+                                                        Loading...
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
                 </div>
             </div>
         </div>
@@ -800,24 +1289,24 @@
 <script>
     function formatTime(tsSeconds) {
         if (!tsSeconds) {
-            return '-';
+            return "-";
         }
         try {
             const d = new Date(tsSeconds * 1000);
             return d.toLocaleString();
         } catch (e) {
-            return '-';
+            return "-";
         }
     }
 
     function formatBytes(bytes) {
         if (bytes === null || bytes === undefined) {
-            return '-';
+            return "-";
         }
-        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const units = ["B", "KB", "MB", "GB", "TB"];
         let size = Number(bytes);
         if (!Number.isFinite(size)) {
-            return '-';
+            return "-";
         }
         let unitIndex = 0;
         while (size >= 1024 && unitIndex < units.length - 1) {
@@ -828,12 +1317,12 @@
     }
 
     function escapeHtml(s) {
-        return String(s ?? '')
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#39;');
+        return String(s ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
     }
 
     function setText(id, value) {
@@ -841,106 +1330,129 @@
         if (!el) {
             return;
         }
-        el.textContent = String(value ?? '');
+        el.textContent = String(value ?? "");
     }
 
     let lastActivityRefreshAt = null;
     let lastClientsRefreshAt = null;
 
     function updateLastRefreshLabel() {
-        const latest = Math.max(lastActivityRefreshAt || 0, lastClientsRefreshAt || 0);
+        const latest = Math.max(
+            lastActivityRefreshAt || 0,
+            lastClientsRefreshAt || 0,
+        );
         if (!latest) {
-            setText('lastRefreshLabel', 'Last update: -');
+            setText("lastRefreshLabel", "Last update: -");
             return;
         }
         const asSeconds = Math.floor(latest / 1000);
-        setText('lastRefreshLabel', `Last update: ${formatTime(asSeconds)}`);
+        setText("lastRefreshLabel", `Last update: ${formatTime(asSeconds)}`);
     }
 
     function updateActivityLayoutMetrics() {
-        const nav = document.querySelector('nav.navbar');
-        const navHeight = Math.max(40, Math.round(nav?.getBoundingClientRect?.().height || 56));
-        document.documentElement.style.setProperty('--activity-nav-h', `${navHeight}px`);
+        const nav = document.querySelector("nav.navbar");
+        const navHeight = Math.max(
+            40,
+            Math.round(nav?.getBoundingClientRect?.().height || 56),
+        );
+        document.documentElement.style.setProperty(
+            "--activity-nav-h",
+            `${navHeight}px`,
+        );
     }
 
     function showError(message) {
-        const el = $('#activityAlert');
-        el.text(message || 'Failed to load activity.').removeClass('d-none');
+        const el = $("#activityAlert");
+        el.text(message || "Failed to load activity.").removeClass("d-none");
     }
 
     function renderClientDetails(item) {
         const fields = [
-            ['Theme', item?.theme],
-            ['UID', item?.uid],
-            ['Version', item?.version],
-            ['Revision', item?.revision],
-            ['Language', item?.language],
-            ['HAUTH', item?.hauth],
-            ['UAUTH', item?.uauth],
+            ["Theme", item?.theme],
+            ["UID", item?.uid],
+            ["Version", item?.version],
+            ["Revision", item?.revision],
+            ["Language", item?.language],
+            ["HAUTH", item?.hauth],
+            ["UAUTH", item?.uauth],
         ];
         const lines = [];
         fields.forEach(([label, raw]) => {
-            const value = String(raw ?? '').trim();
+            const value = String(raw ?? "").trim();
             if (!value) {
                 return;
             }
-            const isCodeValue = ['UID', 'HAUTH', 'UAUTH'].includes(label);
+            const isCodeValue = ["UID", "HAUTH", "UAUTH"].includes(label);
             lines.push(
-                `<div class="client-kv">`
-                + `<span class="client-k">${label}</span>`
-                + `<span class="client-v ${isCodeValue ? 'mono-value' : ''}">${escapeHtml(value)}</span>`
-                + `</div>`
+                `<div class="client-kv">` +
+                    `<span class="client-k">${label}</span>` +
+                    `<span class="client-v ${isCodeValue ? "mono-value" : ""}">${escapeHtml(value)}</span>` +
+                    `</div>`,
             );
         });
         if (!lines.length) {
             return '<span class="text-muted">-</span>';
         }
-        return `<div class="client-detail-stack">${lines.join('')}</div>`;
+        return `<div class="client-detail-stack">${lines.join("")}</div>`;
     }
 
     function hideError() {
-        $('#activityAlert').addClass('d-none').text('');
+        $("#activityAlert").addClass("d-none").text("");
     }
 
     function showActivitySection(sectionName) {
-        const section = ['overview', 'realtime', 'access', 'blocked', 'clients', 'lockouts'].includes(String(sectionName))
+        const section = [
+            "overview",
+            "realtime",
+            "access",
+            "blocked",
+            "clients",
+            "lockouts",
+        ].includes(String(sectionName))
             ? String(sectionName)
-            : 'overview';
-        $('.activity-section-pane').addClass('d-none');
-        $(`#section-${section}`).removeClass('d-none');
-        $('#activityNav .nav-link').removeClass('active');
-        $(`#activityNav .nav-link[data-section="${section}"]`).addClass('active');
+            : "overview";
+        $(".activity-section-pane").addClass("d-none");
+        $(`#section-${section}`).removeClass("d-none");
+        $("#activityNav .nav-link").removeClass("active");
+        $(`#activityNav .nav-link[data-section="${section}"]`).addClass(
+            "active",
+        );
         if (window.location.hash !== `#${section}`) {
-            history.replaceState(null, '', `#${section}`);
+            history.replaceState(null, "", `#${section}`);
         }
-        if (section === 'lockouts') {
+        if (section === "lockouts") {
             loadAuthLockouts();
         }
 
         if ($(window).width() < 768) {
-            $('#activitySidebar').removeClass('show');
-            $('body').removeClass('activity-sidebar-open');
+            $("#activitySidebar").removeClass("show");
+            $("body").removeClass("activity-sidebar-open");
         }
     }
 
     function toggleActivitySidebar() {
-        $('#activitySidebar').toggleClass('show');
-        $('body').toggleClass('activity-sidebar-open', $('#activitySidebar').hasClass('show'));
+        $("#activitySidebar").toggleClass("show");
+        $("body").toggleClass(
+            "activity-sidebar-open",
+            $("#activitySidebar").hasClass("show"),
+        );
     }
 
     function renderLiveTransfers(items) {
-        const body = $('#liveTransfersBody');
+        const body = $("#liveTransfersBody");
         const list = Array.isArray(items) ? items : [];
-        setText('liveTransfersCount', list.length);
-        setText('kpiLiveTransfers', list.length);
+        setText("liveTransfersCount", list.length);
+        setText("kpiLiveTransfers", list.length);
 
         if (!list.length) {
-            body.html('<tr><td colspan="7" class="table-muted-empty">No active transfers.</td></tr>');
+            body.html(
+                '<tr><td colspan="7" class="table-muted-empty">No active transfers.</td></tr>',
+            );
             return;
         }
 
         body.empty();
-        list.forEach(item => {
+        list.forEach((item) => {
             const locParts = [];
             if (item.city) {
                 locParts.push(item.city);
@@ -951,19 +1463,23 @@
             if (item.country) {
                 locParts.push(item.country);
             }
-            const locationLabel = locParts.length ? locParts.join(', ') : '-';
-            const countryCode = String(item.country_code || '').trim().toLowerCase();
-            const flagIcon = countryCode ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />` : '';
+            const locationLabel = locParts.length ? locParts.join(", ") : "-";
+            const countryCode = String(item.country_code || "")
+                .trim()
+                .toLowerCase();
+            const flagIcon = countryCode
+                ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />`
+                : "";
             const row = $(
                 `<tr>
                     <td>${escapeHtml(formatTime(item.started_at))}</td>
-                    <td>${escapeHtml(item.user || '-')}</td>
-                    <td>${escapeHtml(item.remote_addr || '-')}</td>
+                    <td>${escapeHtml(item.user || "-")}</td>
+                    <td>${escapeHtml(item.remote_addr || "-")}</td>
                     <td><span class="location-cell">${flagIcon}${escapeHtml(locationLabel)}</span></td>
-                    <td>${escapeHtml(item.title_id || '-')}${item.title_name ? ` <span class="text-muted">(${escapeHtml(item.title_name)})</span>` : ''}</td>
-                    <td class="text-truncate" style="max-width: 300px;">${escapeHtml(item.filename || '-') }</td>
+                    <td>${escapeHtml(item.title_id || "-")}${item.title_name ? ` <span class="text-muted">(${escapeHtml(item.title_name)})</span>` : ""}</td>
+                    <td class="text-truncate" style="max-width: 300px;">${escapeHtml(item.filename || "-")}</td>
                     <td>${escapeHtml(formatBytes(item.bytes_sent))}</td>
-                </tr>`
+                </tr>`,
             );
             body.append(row);
         });
@@ -971,52 +1487,58 @@
 
     let accessHistoryAll = [];
     let accessHistoryRendered = [];
-    let accessHistorySortKey = 'at';
-    let accessHistorySortDir = 'desc';
-    let accessHistoryQuery = '';
-    let blockedIpsQuery = '';
+    let accessHistorySortKey = "at";
+    let accessHistorySortDir = "desc";
+    let accessHistoryQuery = "";
+    let blockedIpsQuery = "";
 
     function formatIsoTime(tsSeconds) {
         if (!tsSeconds) {
-            return '';
+            return "";
         }
         try {
             return new Date(tsSeconds * 1000).toISOString();
         } catch (e) {
-            return '';
+            return "";
         }
     }
 
     function getSortValue(item, key) {
         if (!item) {
-            return '';
+            return "";
         }
-        if (key === 'ok') {
-            return item.ok === true ? 2 : (item.ok === false ? 1 : 0);
+        if (key === "ok") {
+            return item.ok === true ? 2 : item.ok === false ? 1 : 0;
         }
         const value = item[key];
         if (value === null || value === undefined) {
-            return '';
+            return "";
         }
         return value;
     }
 
     function refreshSortIndicators() {
-        $('th.sortable').each(function () {
+        $("th.sortable").each(function () {
             const th = $(this);
-            th.removeClass('sorted-asc sorted-desc');
-            if (String(th.data('sort-key')) === String(accessHistorySortKey)) {
-                th.addClass(accessHistorySortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            th.removeClass("sorted-asc sorted-desc");
+            if (String(th.data("sort-key")) === String(accessHistorySortKey)) {
+                th.addClass(
+                    accessHistorySortDir === "asc"
+                        ? "sorted-asc"
+                        : "sorted-desc",
+                );
             }
         });
     }
 
     function applyAccessHistoryView() {
-        const q = (accessHistoryQuery || '').trim().toLowerCase();
-        let list = Array.isArray(accessHistoryAll) ? accessHistoryAll.slice() : [];
+        const q = (accessHistoryQuery || "").trim().toLowerCase();
+        let list = Array.isArray(accessHistoryAll)
+            ? accessHistoryAll.slice()
+            : [];
 
         if (q) {
-            list = list.filter(item => {
+            list = list.filter((item) => {
                 const hay = [
                     item.at,
                     item.kind,
@@ -1032,20 +1554,23 @@
                     item.filename,
                     item.bytes_sent,
                     item.status_code,
-                ].map(v => String(v ?? '')).join(' ').toLowerCase();
+                ]
+                    .map((v) => String(v ?? ""))
+                    .join(" ")
+                    .toLowerCase();
                 return hay.includes(q);
             });
         }
 
-        const dir = accessHistorySortDir === 'asc' ? 1 : -1;
+        const dir = accessHistorySortDir === "asc" ? 1 : -1;
         const key = accessHistorySortKey;
         list.sort((a, b) => {
             const av = getSortValue(a, key);
             const bv = getSortValue(b, key);
-            if (typeof av === 'number' && typeof bv === 'number') {
+            if (typeof av === "number" && typeof bv === "number") {
                 return dir * (av - bv);
             }
-            if (key === 'at' || key === 'bytes_sent') {
+            if (key === "at" || key === "bytes_sent") {
                 const an = Number(av) || 0;
                 const bn = Number(bv) || 0;
                 return dir * (an - bn);
@@ -1059,39 +1584,54 @@
     }
 
     function exportAccessHistoryCsv() {
-        const list = Array.isArray(accessHistoryRendered) ? accessHistoryRendered : [];
+        const list = Array.isArray(accessHistoryRendered)
+            ? accessHistoryRendered
+            : [];
         const rows = [];
-        rows.push(['at', 'kind', 'user', 'remote_addr', 'title_id', 'title_name', 'filename', 'bytes_sent', 'ok', 'status_code', 'duration_ms']);
-        list.forEach(item => {
+        rows.push([
+            "at",
+            "kind",
+            "user",
+            "remote_addr",
+            "title_id",
+            "title_name",
+            "filename",
+            "bytes_sent",
+            "ok",
+            "status_code",
+            "duration_ms",
+        ]);
+        list.forEach((item) => {
             rows.push([
                 formatIsoTime(item.at),
-                item.kind ?? '',
-                item.user ?? '',
-                item.remote_addr ?? '',
-                item.title_id ?? '',
-                item.title_name ?? '',
-                item.filename ?? '',
-                item.bytes_sent ?? '',
-                item.ok ?? '',
-                item.status_code ?? '',
-                item.duration_ms ?? '',
+                item.kind ?? "",
+                item.user ?? "",
+                item.remote_addr ?? "",
+                item.title_id ?? "",
+                item.title_name ?? "",
+                item.filename ?? "",
+                item.bytes_sent ?? "",
+                item.ok ?? "",
+                item.status_code ?? "",
+                item.duration_ms ?? "",
             ]);
         });
 
         function csvEscape(value) {
-            const s = String(value ?? '');
+            const s = String(value ?? "");
             if (/[\r\n\",]/.test(s)) {
                 return '"' + s.replaceAll('"', '""') + '"';
             }
             return s;
         }
 
-        const csv = rows.map(r => r.map(csvEscape).join(',')).join('\n') + '\n';
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const csv =
+            rows.map((r) => r.map(csvEscape).join(",")).join("\n") + "\n";
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
-        a.download = 'access_history.csv';
+        a.download = "access_history.csv";
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -1099,18 +1639,20 @@
     }
 
     function renderConnectedClients(items) {
-        const body = $('#connectedClientsBody');
+        const body = $("#connectedClientsBody");
         const list = Array.isArray(items) ? items : [];
-        setText('connectedClientsCount', list.length);
-        setText('kpiConnectedClients', list.length);
+        setText("connectedClientsCount", list.length);
+        setText("kpiConnectedClients", list.length);
 
         if (!list.length) {
-            body.html('<tr><td colspan="6" class="table-muted-empty">No recent clients.</td></tr>');
+            body.html(
+                '<tr><td colspan="6" class="table-muted-empty">No recent clients.</td></tr>',
+            );
             return;
         }
 
         body.empty();
-        list.forEach(item => {
+        list.forEach((item) => {
             const locParts = [];
             if (item.city) {
                 locParts.push(item.city);
@@ -1121,54 +1663,64 @@
             if (item.country) {
                 locParts.push(item.country);
             }
-            const locationLabel = locParts.length ? locParts.join(', ') : '-';
-            const countryCode = String(item.country_code || '').trim().toLowerCase();
-            const flagIcon = countryCode ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />` : '';
+            const locationLabel = locParts.length ? locParts.join(", ") : "-";
+            const countryCode = String(item.country_code || "")
+                .trim()
+                .toLowerCase();
+            const flagIcon = countryCode
+                ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />`
+                : "";
             const row = $(
                 `<tr>
                     <td>${escapeHtml(formatTime(item.last_seen_at))}</td>
-                    <td>${escapeHtml(item.user || '-')}</td>
-                    <td>${escapeHtml(item.remote_addr || '-')}</td>
+                    <td>${escapeHtml(item.user || "-")}</td>
+                    <td>${escapeHtml(item.remote_addr || "-")}</td>
                     <td><span class="location-cell">${flagIcon}${escapeHtml(locationLabel)}</span></td>
-                    <td class="text-truncate" style="max-width: 520px;">${escapeHtml(item.user_agent || '-')}</td>
+                    <td class="text-truncate" style="max-width: 520px;">${escapeHtml(item.user_agent || "-")}</td>
                     <td style="min-width: 280px;">${renderClientDetails(item)}</td>
-                </tr>`
+                </tr>`,
             );
             body.append(row);
         });
     }
 
     function kindBadgeClass(kind) {
-        const normalized = String(kind || '').toLowerCase();
-        if (normalized === 'transfer') {
-            return 'text-bg-primary';
+        const normalized = String(kind || "").toLowerCase();
+        if (normalized === "transfer") {
+            return "text-bg-primary";
         }
-        if (normalized === 'shop' || normalized === 'shop_sections' || normalized === 'shop_media') {
-            return 'text-bg-info';
+        if (
+            normalized === "shop" ||
+            normalized === "shop_sections" ||
+            normalized === "shop_media"
+        ) {
+            return "text-bg-info";
         }
-        if (normalized === 'client_seen') {
-            return 'text-bg-secondary';
+        if (normalized === "client_seen") {
+            return "text-bg-secondary";
         }
-        if (normalized.includes('error') || normalized.includes('failed')) {
-            return 'text-bg-danger';
+        if (normalized.includes("error") || normalized.includes("failed")) {
+            return "text-bg-danger";
         }
-        return 'text-bg-light border text-dark';
+        return "text-bg-light border text-dark";
     }
 
     function renderAccessHistory(items) {
-        const body = $('#accessHistoryBody');
+        const body = $("#accessHistoryBody");
         const list = Array.isArray(items) ? items : [];
-        setText('accessHistoryCount', list.length);
-        setText('kpiAccessRows', list.length);
+        setText("accessHistoryCount", list.length);
+        setText("kpiAccessRows", list.length);
         if (!list.length) {
-            const msg = (accessHistoryQuery || '').trim()
-                ? 'No history rows match your search.'
-                : 'No history yet.';
-            body.html(`<tr><td colspan="9" class="table-muted-empty">${escapeHtml(msg)}</td></tr>`);
+            const msg = (accessHistoryQuery || "").trim()
+                ? "No history rows match your search."
+                : "No history yet.";
+            body.html(
+                `<tr><td colspan="9" class="table-muted-empty">${escapeHtml(msg)}</td></tr>`,
+            );
             return;
         }
         body.empty();
-        list.forEach(item => {
+        list.forEach((item) => {
             const locParts = [];
             if (item.city) {
                 locParts.push(item.city);
@@ -1179,47 +1731,58 @@
             if (item.country) {
                 locParts.push(item.country);
             }
-            const locationLabel = locParts.length ? locParts.join(', ') : '-';
-            const countryCode = String(item.country_code || '').trim().toLowerCase();
-            const flagIcon = countryCode ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />` : '';
-            const statusText = item.ok === true ? 'OK' : (item.ok === false ? 'Fail' : '-');
-            const statusClass = item.ok === true
-                ? 'text-bg-success'
-                : (item.ok === false ? 'text-bg-danger' : 'text-bg-secondary');
-            const statusCodeLabel = item.status_code ? ` ${escapeHtml(item.status_code)}` : '';
+            const locationLabel = locParts.length ? locParts.join(", ") : "-";
+            const countryCode = String(item.country_code || "")
+                .trim()
+                .toLowerCase();
+            const flagIcon = countryCode
+                ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />`
+                : "";
+            const statusText =
+                item.ok === true ? "OK" : item.ok === false ? "Fail" : "-";
+            const statusClass =
+                item.ok === true
+                    ? "text-bg-success"
+                    : item.ok === false
+                      ? "text-bg-danger"
+                      : "text-bg-secondary";
+            const statusCodeLabel = item.status_code
+                ? ` ${escapeHtml(item.status_code)}`
+                : "";
 
-            const bytesLabel = item.kind === 'transfer'
-                ? formatBytes(item.bytes_sent)
-                : '-';
+            const bytesLabel =
+                item.kind === "transfer" ? formatBytes(item.bytes_sent) : "-";
             const row = $(
                 `<tr>
                     <td>${escapeHtml(formatTime(item.at))}</td>
-                    <td><span class="badge kind-badge ${kindBadgeClass(item.kind)}">${escapeHtml(item.kind || '-')}</span></td>
-                    <td>${escapeHtml(item.user || '-')}</td>
-                    <td>${escapeHtml(item.remote_addr || '-')}</td>
+                    <td><span class="badge kind-badge ${kindBadgeClass(item.kind)}">${escapeHtml(item.kind || "-")}</span></td>
+                    <td>${escapeHtml(item.user || "-")}</td>
+                    <td>${escapeHtml(item.remote_addr || "-")}</td>
                     <td><span class="location-cell">${flagIcon}${escapeHtml(locationLabel)}</span></td>
-                    <td>${escapeHtml(item.title_id || '-')}${item.title_name ? ` <span class="text-muted">(${escapeHtml(item.title_name)})</span>` : ''}</td>
-                    <td class="text-truncate" style="max-width: 420px;">${escapeHtml(item.filename || '-') }</td>
+                    <td>${escapeHtml(item.title_id || "-")}${item.title_name ? ` <span class="text-muted">(${escapeHtml(item.title_name)})</span>` : ""}</td>
+                    <td class="text-truncate" style="max-width: 420px;">${escapeHtml(item.filename || "-")}</td>
                     <td>${escapeHtml(bytesLabel)}</td>
                     <td><span class="badge ${statusClass}">${statusText}${statusCodeLabel}</span></td>
-                </tr>`
+                </tr>`,
             );
             body.append(row);
         });
     }
 
     function renderClientsHistory(items) {
-        const body = $('#clientsHistoryBody');
+        const body = $("#clientsHistoryBody");
         const list = Array.isArray(items) ? items : [];
-        setText('clientHistoryCount', list.length);
-        setText('kpiClientHistoryRows', list.length);
+        setText("clientHistoryCount", list.length);
+        setText("kpiClientHistoryRows", list.length);
         if (!list.length) {
-            body.html('<tr><td colspan="7" class="table-muted-empty">No client history yet.</td></tr>');
+            body.html(
+                '<tr><td colspan="7" class="table-muted-empty">No client history yet.</td></tr>',
+            );
             return;
         }
 
         body.empty();
-        list.forEach(item => {
+        list.forEach((item) => {
             const locParts = [];
             if (item.city) {
                 locParts.push(item.city);
@@ -1230,38 +1793,44 @@
             if (item.country) {
                 locParts.push(item.country);
             }
-            const locationLabel = locParts.length ? locParts.join(', ') : '-';
-            const countryCode = String(item.country_code || '').trim().toLowerCase();
-            const flagIcon = countryCode ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />` : '';
+            const locationLabel = locParts.length ? locParts.join(", ") : "-";
+            const countryCode = String(item.country_code || "")
+                .trim()
+                .toLowerCase();
+            const flagIcon = countryCode
+                ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />`
+                : "";
             const row = $(
                 `<tr>
                     <td>${escapeHtml(formatTime(item.at))}</td>
-                    <td>${escapeHtml(item.user || '-')}</td>
-                    <td>${escapeHtml(item.remote_addr || '-')}</td>
+                    <td>${escapeHtml(item.user || "-")}</td>
+                    <td>${escapeHtml(item.remote_addr || "-")}</td>
                     <td><span class="location-cell">${flagIcon}${escapeHtml(locationLabel)}</span></td>
-                    <td class="text-truncate" style="max-width: 520px;">${escapeHtml(item.user_agent || '-')}</td>
+                    <td class="text-truncate" style="max-width: 520px;">${escapeHtml(item.user_agent || "-")}</td>
                     <td style="min-width: 280px;">${renderClientDetails(item)}</td>
-                    <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm blacklist-ip-btn" data-ip="${escapeHtml(item.remote_addr || '')}"><i class="bi bi-shield-slash"></i> Block</button></td>
-                </tr>`
+                    <td class="text-end"><button type="button" class="btn btn-outline-danger btn-sm blacklist-ip-btn" data-ip="${escapeHtml(item.remote_addr || "")}"><i class="bi bi-shield-slash"></i> Block</button></td>
+                </tr>`,
             );
             body.append(row);
         });
     }
 
     function renderBlockedIps(items) {
-        const body = $('#blockedIpsBody');
+        const body = $("#blockedIpsBody");
         const list = Array.isArray(items) ? items : [];
-        setText('blockedIpsCount', list.length);
+        setText("blockedIpsCount", list.length);
         if (!list.length) {
-            const msg = (blockedIpsQuery || '').trim()
-                ? 'No blocked requests match your search.'
-                : 'No blocked requests yet.';
-            body.html(`<tr><td colspan="6" class="table-muted-empty">${escapeHtml(msg)}</td></tr>`);
+            const msg = (blockedIpsQuery || "").trim()
+                ? "No blocked requests match your search."
+                : "No blocked requests yet.";
+            body.html(
+                `<tr><td colspan="6" class="table-muted-empty">${escapeHtml(msg)}</td></tr>`,
+            );
             return;
         }
 
         body.empty();
-        list.forEach(item => {
+        list.forEach((item) => {
             const locParts = [];
             if (item.city) {
                 locParts.push(item.city);
@@ -1272,30 +1841,45 @@
             if (item.country) {
                 locParts.push(item.country);
             }
-            const locationLabel = locParts.length ? locParts.join(', ') : '-';
-            const countryCode = String(item.country_code || '').trim().toLowerCase();
-            const flagIcon = countryCode ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />` : '';
-            const statusLabel = item.status_code ? ` ${escapeHtml(item.status_code)}` : '';
+            const locationLabel = locParts.length ? locParts.join(", ") : "-";
+            const countryCode = String(item.country_code || "")
+                .trim()
+                .toLowerCase();
+            const flagIcon = countryCode
+                ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />`
+                : "";
+            const statusLabel = item.status_code
+                ? ` ${escapeHtml(item.status_code)}`
+                : "";
             const row = $(
                 `<tr>
                     <td>${escapeHtml(formatTime(item.at))}</td>
-                    <td>${escapeHtml(item.remote_addr || '-')}</td>
+                    <td>${escapeHtml(item.remote_addr || "-")}</td>
                     <td><span class="location-cell">${flagIcon}${escapeHtml(locationLabel)}</span></td>
-                    <td class="text-truncate" style="max-width: 420px;">${escapeHtml(item.filename || '-')}</td>
-                    <td class="text-truncate" style="max-width: 520px;">${escapeHtml(item.user_agent || '-')}</td>
+                    <td class="text-truncate" style="max-width: 420px;">${escapeHtml(item.filename || "-")}</td>
+                    <td class="text-truncate" style="max-width: 520px;">${escapeHtml(item.user_agent || "-")}</td>
                     <td><span class="badge text-bg-danger">Blocked${statusLabel}</span></td>
-                </tr>`
+                </tr>`,
             );
             body.append(row);
         });
     }
 
     function applyBlockedIpsView() {
-        const q = (blockedIpsQuery || '').trim().toLowerCase();
-        let list = Array.isArray(accessHistoryAll) ? accessHistoryAll.slice() : [];
-        list = list.filter(item => String(item?.kind || '') === 'permanent_ip_blocked');
+        const q = (blockedIpsQuery || "").trim().toLowerCase();
+        let list = Array.isArray(accessHistoryAll)
+            ? accessHistoryAll.slice()
+            : [];
+        list = list.filter((item) => {
+            const kind = String(item?.kind || "");
+            return (
+                kind === "permanent_ip_blocked" ||
+                kind === "country_blocked" ||
+                kind === "country_not_whitelisted"
+            );
+        });
         if (q) {
-            list = list.filter(item => {
+            list = list.filter((item) => {
                 const hay = [
                     item.at,
                     item.remote_addr,
@@ -1307,7 +1891,10 @@
                     item.filename,
                     item.user_agent,
                     item.status_code,
-                ].map(v => String(v ?? '')).join(' ').toLowerCase();
+                ]
+                    .map((v) => String(v ?? ""))
+                    .join(" ")
+                    .toLowerCase();
                 return hay.includes(q);
             });
         }
@@ -1317,7 +1904,7 @@
     function formatDurationSeconds(totalSeconds) {
         let sec = parseInt(totalSeconds, 10);
         if (!Number.isFinite(sec) || sec <= 0) {
-            return '0s';
+            return "0s";
         }
         const days = Math.floor(sec / 86400);
         sec -= days * 86400;
@@ -1338,31 +1925,31 @@
         if (sec > 0 && parts.length < 2) {
             parts.push(`${sec}s`);
         }
-        return parts.join(' ');
+        return parts.join(" ");
     }
 
     function setAuthLockoutsPlaceholder(message) {
-        $('#authLockoutsBodyActivity').html(
-            `<tr><td colspan="5" class="table-muted-empty">${escapeHtml(message)}</td></tr>`
+        $("#authLockoutsBodyActivity").html(
+            `<tr><td colspan="5" class="table-muted-empty">${escapeHtml(message)}</td></tr>`,
         );
     }
 
     function renderAuthLockouts(items) {
-        const body = $('#authLockoutsBodyActivity');
+        const body = $("#authLockoutsBodyActivity");
         const list = Array.isArray(items) ? items : [];
-        setText('authLockoutsCountActivity', list.length);
-        setText('kpiLockedIps', list.length);
+        setText("authLockoutsCountActivity", list.length);
+        setText("kpiLockedIps", list.length);
         if (!list.length) {
-            setAuthLockoutsPlaceholder('No temporary lockouts.');
+            setAuthLockoutsPlaceholder("No temporary lockouts.");
             return;
         }
 
         body.empty();
-        list.forEach(item => {
-            const ip = String(item?.ip || '').trim();
+        list.forEach((item) => {
+            const ip = String(item?.ip || "").trim();
             const row = $(
                 `<tr>
-                    <td class="mono-value">${escapeHtml(ip || '-')}</td>
+                    <td class="mono-value">${escapeHtml(ip || "-")}</td>
                     <td>${escapeHtml(formatDurationSeconds(item?.remaining_seconds || 0))}</td>
                     <td>${escapeHtml(formatTime(item?.last_failed_at || 0))}</td>
                     <td>${escapeHtml(String(item?.failed_attempts_recent ?? 0))}</td>
@@ -1371,7 +1958,7 @@
                             <i class="bi bi-unlock"></i> Unlock
                         </button>
                     </td>
-                </tr>`
+                </tr>`,
             );
             body.append(row);
         });
@@ -1382,76 +1969,85 @@
             return;
         }
         loadAuthLockouts.inFlight = true;
-        $('#refreshAuthLockoutsBtnActivity').prop('disabled', true);
-        $.getJSON('/api/auth/lockouts', function (result) {
+        $("#refreshAuthLockoutsBtnActivity").prop("disabled", true);
+        $.getJSON("/api/auth/lockouts", function (result) {
             if (!result || result.success !== true) {
                 renderAuthLockouts([]);
-                setAuthLockoutsPlaceholder('Failed to load lockouts.');
+                setAuthLockoutsPlaceholder("Failed to load lockouts.");
                 return;
             }
             renderAuthLockouts(result.items);
-        }).fail(function () {
-            renderAuthLockouts([]);
-            setAuthLockoutsPlaceholder('Failed to load lockouts.');
-        }).always(function () {
-            loadAuthLockouts.inFlight = false;
-            $('#refreshAuthLockoutsBtnActivity').prop('disabled', false);
-        });
+        })
+            .fail(function () {
+                renderAuthLockouts([]);
+                setAuthLockoutsPlaceholder("Failed to load lockouts.");
+            })
+            .always(function () {
+                loadAuthLockouts.inFlight = false;
+                $("#refreshAuthLockoutsBtnActivity").prop("disabled", false);
+            });
     }
 
     function blockIpFromClientHistory(ip) {
-        const trimmed = String(ip || '').trim();
+        const trimmed = String(ip || "").trim();
         if (!trimmed) {
             return;
         }
         $.ajax({
-            url: '/api/admin/blacklist-ip',
-            method: 'POST',
-            contentType: 'application/json',
+            url: "/api/admin/blacklist-ip",
+            method: "POST",
+            contentType: "application/json",
             data: JSON.stringify({ ip: trimmed }),
-        }).done(function (resp) {
-            if (!resp || !resp.success) {
-                const msg = (resp && resp.error) ? resp.error : 'Failed to add IP to blacklist.';
+        })
+            .done(function (resp) {
+                if (!resp || !resp.success) {
+                    const msg =
+                        resp && resp.error
+                            ? resp.error
+                            : "Failed to add IP to blacklist.";
+                    showError(msg);
+                    return;
+                }
+                showToast(`Blacklisted ${trimmed}`, "success");
+            })
+            .fail(function (xhr) {
+                const msg =
+                    xhr?.responseJSON?.error ||
+                    "Failed to add IP to blacklist.";
                 showError(msg);
-                return;
-            }
-            showToast(`Blacklisted ${trimmed}`, 'success');
-        }).fail(function (xhr) {
-            const msg = xhr?.responseJSON?.error || 'Failed to add IP to blacklist.';
-            showError(msg);
-        });
+            });
     }
 
     function unlockAuthLockout(ip) {
-        const value = String(ip || '').trim();
+        const value = String(ip || "").trim();
         if (!value) {
             return;
         }
         $.ajax({
-            url: '/api/auth/lockouts/unlock',
-            type: 'POST',
+            url: "/api/auth/lockouts/unlock",
+            type: "POST",
             data: JSON.stringify({ ip: value }),
-            contentType: 'application/json',
+            contentType: "application/json",
             complete: function () {
                 loadAuthLockouts();
-            }
+            },
         });
     }
 
     function unlockAllAuthLockouts() {
-        if (!confirm('Unlock all temporarily locked IPs?')) {
+        if (!confirm("Unlock all temporarily locked IPs?")) {
             return;
         }
-        $('#unlockAllAuthLockoutsBtnActivity').prop('disabled', true);
+        $("#unlockAllAuthLockoutsBtnActivity").prop("disabled", true);
         $.ajax({
-            url: '/api/auth/lockouts/unlock-all',
-            type: 'POST',
+            url: "/api/auth/lockouts/unlock-all",
+            type: "POST",
             data: JSON.stringify({}),
-            contentType: 'application/json',
+            contentType: "application/json",
             complete: function () {
-                $('#unlockAllAuthLockoutsBtnActivity').prop('disabled', false);
+                $("#unlockAllAuthLockoutsBtnActivity").prop("disabled", false);
                 loadAuthLockouts();
-            }
+            },
         });
     }
 
@@ -1460,20 +2056,25 @@
             return;
         }
         loadClientsHistory.inFlight = true;
-        const limit = parseInt($('#clientsHistoryLimit').val() || '250', 10);
-        $.getJSON(`/api/admin/clients-history?limit=${encodeURIComponent(limit)}`, function (result) {
-            if (!result || result.success !== true) {
+        const limit = parseInt($("#clientsHistoryLimit").val() || "250", 10);
+        $.getJSON(
+            `/api/admin/clients-history?limit=${encodeURIComponent(limit)}`,
+            function (result) {
+                if (!result || result.success !== true) {
+                    renderClientsHistory([]);
+                    return;
+                }
+                renderClientsHistory(result.history);
+                lastClientsRefreshAt = Date.now();
+                updateLastRefreshLabel();
+            },
+        )
+            .fail(function () {
                 renderClientsHistory([]);
-                return;
-            }
-            renderClientsHistory(result.history);
-            lastClientsRefreshAt = Date.now();
-            updateLastRefreshLabel();
-        }).fail(function () {
-            renderClientsHistory([]);
-        }).always(function () {
-            loadClientsHistory.inFlight = false;
-        });
+            })
+            .always(function () {
+                loadClientsHistory.inFlight = false;
+            });
     }
 
     function loadActivity() {
@@ -1482,51 +2083,66 @@
         }
         loadActivity.inFlight = true;
         hideError();
-        const limit = parseInt($('#activityLimit').val() || '100', 10);
-        $.getJSON(`/api/admin/activity?limit=${encodeURIComponent(limit)}`, function (result) {
-            if (!result || result.success !== true) {
-                showError(result?.message || 'Failed to load activity.');
-                return;
-            }
-            if (result.access_history_error) {
-                showError(`Access history unavailable: ${result.access_history_error}`);
-            }
-            renderLiveTransfers(result.live_transfers);
-            renderConnectedClients(result.connected_clients);
-            accessHistoryAll = Array.isArray(result.access_history) ? result.access_history : [];
-            applyAccessHistoryView();
-            applyBlockedIpsView();
-            lastActivityRefreshAt = Date.now();
-            updateLastRefreshLabel();
-        }).fail(function () {
-            showError('Failed to load activity.');
-        }).always(function () {
-            loadActivity.inFlight = false;
-        });
+        const limit = parseInt($("#activityLimit").val() || "100", 10);
+        $.getJSON(
+            `/api/admin/activity?limit=${encodeURIComponent(limit)}`,
+            function (result) {
+                if (!result || result.success !== true) {
+                    showError(result?.message || "Failed to load activity.");
+                    return;
+                }
+                if (result.access_history_error) {
+                    showError(
+                        `Access history unavailable: ${result.access_history_error}`,
+                    );
+                }
+                renderLiveTransfers(result.live_transfers);
+                renderConnectedClients(result.connected_clients);
+                accessHistoryAll = Array.isArray(result.access_history)
+                    ? result.access_history
+                    : [];
+                applyAccessHistoryView();
+                applyBlockedIpsView();
+                lastActivityRefreshAt = Date.now();
+                updateLastRefreshLabel();
+            },
+        )
+            .fail(function () {
+                showError("Failed to load activity.");
+            })
+            .always(function () {
+                loadActivity.inFlight = false;
+            });
     }
 
     $(document).ready(function () {
         updateActivityLayoutMetrics();
-        $(window).on('resize', updateActivityLayoutMetrics);
+        $(window).on("resize", updateActivityLayoutMetrics);
 
-        const navbarCollapseEl = document.getElementById('navbarNav');
+        const navbarCollapseEl = document.getElementById("navbarNav");
         if (navbarCollapseEl) {
-            navbarCollapseEl.addEventListener('shown.bs.collapse', updateActivityLayoutMetrics);
-            navbarCollapseEl.addEventListener('hidden.bs.collapse', updateActivityLayoutMetrics);
+            navbarCollapseEl.addEventListener(
+                "shown.bs.collapse",
+                updateActivityLayoutMetrics,
+            );
+            navbarCollapseEl.addEventListener(
+                "hidden.bs.collapse",
+                updateActivityLayoutMetrics,
+            );
         }
 
-        $('#activityNav .nav-link').on('click', function (e) {
+        $("#activityNav .nav-link").on("click", function (e) {
             e.preventDefault();
-            showActivitySection($(this).data('section'));
+            showActivitySection($(this).data("section"));
         });
 
-        $('#blockedIpsSearch').on('input', function () {
-            blockedIpsQuery = String($(this).val() || '');
+        $("#blockedIpsSearch").on("input", function () {
+            blockedIpsQuery = String($(this).val() || "");
             applyBlockedIpsView();
         });
 
-        $('#clientsHistoryBody').on('click', '.blacklist-ip-btn', function () {
-            const ip = $(this).data('ip');
+        $("#clientsHistoryBody").on("click", ".blacklist-ip-btn", function () {
+            const ip = $(this).data("ip");
             if (!ip) {
                 return;
             }
@@ -1536,114 +2152,129 @@
             blockIpFromClientHistory(ip);
         });
 
-        $('#activitySidebarToggle, #activitySidebarToggleMobile').on('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleActivitySidebar();
-        });
+        $("#activitySidebarToggle, #activitySidebarToggleMobile").on(
+            "click",
+            function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleActivitySidebar();
+            },
+        );
 
-        $(document).on('click', function (e) {
-            if ($(window).width() >= 768 || !$('#activitySidebar').hasClass('show')) {
+        $(document).on("click", function (e) {
+            if (
+                $(window).width() >= 768 ||
+                !$("#activitySidebar").hasClass("show")
+            ) {
                 return;
             }
             if (
-                !$(e.target).closest('#activitySidebar').length
-                && !$(e.target).is('#activitySidebarToggle')
-                && !$(e.target).is('#activitySidebarToggleMobile')
-                && !$(e.target).closest('#activitySidebarToggleMobile').length
+                !$(e.target).closest("#activitySidebar").length &&
+                !$(e.target).is("#activitySidebarToggle") &&
+                !$(e.target).is("#activitySidebarToggleMobile") &&
+                !$(e.target).closest("#activitySidebarToggleMobile").length
             ) {
-                $('#activitySidebar').removeClass('show');
-                $('body').removeClass('activity-sidebar-open');
+                $("#activitySidebar").removeClass("show");
+                $("body").removeClass("activity-sidebar-open");
             }
         });
 
-        $(window).on('hashchange', function () {
-            const target = String(window.location.hash || '').replace('#', '');
+        $(window).on("hashchange", function () {
+            const target = String(window.location.hash || "").replace("#", "");
             if (target) {
                 showActivitySection(target);
             }
         });
 
-        $('#refreshNowBtn').on('click', function () {
+        $("#refreshNowBtn").on("click", function () {
             loadActivity();
             loadClientsHistory();
             loadAuthLockouts();
         });
-        $('#activityLimit').on('change', loadActivity);
-        $('#clientsHistoryLimit').on('change', loadClientsHistory);
-        $('#refreshAuthLockoutsBtnActivity').on('click', function () {
+        $("#activityLimit").on("change", loadActivity);
+        $("#clientsHistoryLimit").on("change", loadClientsHistory);
+        $("#refreshAuthLockoutsBtnActivity").on("click", function () {
             loadAuthLockouts();
         });
-        $('#unlockAllAuthLockoutsBtnActivity').on('click', function () {
+        $("#unlockAllAuthLockoutsBtnActivity").on("click", function () {
             unlockAllAuthLockouts();
         });
-        $(document).on('click', '.unlock-auth-lockout-btn-activity', function () {
-            unlockAuthLockout($(this).data('ip'));
-        });
+        $(document).on(
+            "click",
+            ".unlock-auth-lockout-btn-activity",
+            function () {
+                unlockAuthLockout($(this).data("ip"));
+            },
+        );
 
-        $('#clearClientsHistoryBtn').on('click', function () {
-            if (!confirm('Clear the persisted client history log?')) {
+        $("#clearClientsHistoryBtn").on("click", function () {
+            if (!confirm("Clear the persisted client history log?")) {
                 return;
             }
-            $('#clearClientsHistoryBtn').prop('disabled', true);
+            $("#clearClientsHistoryBtn").prop("disabled", true);
             $.ajax({
-                url: '/api/admin/clients-history/clear',
-                type: 'POST',
-                contentType: 'application/json',
+                url: "/api/admin/clients-history/clear",
+                type: "POST",
+                contentType: "application/json",
                 data: JSON.stringify({}),
                 complete: function () {
-                    $('#clearClientsHistoryBtn').prop('disabled', false);
+                    $("#clearClientsHistoryBtn").prop("disabled", false);
                     loadClientsHistory();
-                }
+                },
             });
         });
 
-        $('#exportClientsHistoryBtn').on('click', function () {
-            const limit = parseInt($('#clientsHistoryLimit').val() || '250', 10);
+        $("#exportClientsHistoryBtn").on("click", function () {
+            const limit = parseInt(
+                $("#clientsHistoryLimit").val() || "250",
+                10,
+            );
             window.location.href = `/api/admin/clients-history.csv?limit=${encodeURIComponent(limit)}`;
         });
 
-        $('#accessSearch').on('input', function () {
-            accessHistoryQuery = String($(this).val() ?? '');
+        $("#accessSearch").on("input", function () {
+            accessHistoryQuery = String($(this).val() ?? "");
             applyAccessHistoryView();
         });
 
-        $('#exportAccessHistoryBtn').on('click', function () {
+        $("#exportAccessHistoryBtn").on("click", function () {
             exportAccessHistoryCsv();
         });
 
-        $('#clearAccessHistoryBtn').on('click', function () {
-            if (!confirm('Clear the persisted access history log?')) {
+        $("#clearAccessHistoryBtn").on("click", function () {
+            if (!confirm("Clear the persisted access history log?")) {
                 return;
             }
-            $('#clearAccessHistoryBtn').prop('disabled', true);
+            $("#clearAccessHistoryBtn").prop("disabled", true);
             $.ajax({
-                url: '/api/admin/access-history/clear',
-                type: 'POST',
-                contentType: 'application/json',
+                url: "/api/admin/access-history/clear",
+                type: "POST",
+                contentType: "application/json",
                 data: JSON.stringify({ include_clients: false }),
                 complete: function () {
-                    $('#clearAccessHistoryBtn').prop('disabled', false);
+                    $("#clearAccessHistoryBtn").prop("disabled", false);
                     loadActivity();
-                }
+                },
             });
         });
 
-        $('th.sortable').on('click', function () {
-            const key = $(this).data('sort-key');
+        $("th.sortable").on("click", function () {
+            const key = $(this).data("sort-key");
             if (!key) {
                 return;
             }
             if (accessHistorySortKey === key) {
-                accessHistorySortDir = accessHistorySortDir === 'asc' ? 'desc' : 'asc';
+                accessHistorySortDir =
+                    accessHistorySortDir === "asc" ? "desc" : "asc";
             } else {
                 accessHistorySortKey = key;
-                accessHistorySortDir = key === 'at' ? 'desc' : 'asc';
+                accessHistorySortDir = key === "at" ? "desc" : "asc";
             }
             applyAccessHistoryView();
         });
 
-        const initialSection = String(window.location.hash || '').replace('#', '') || 'overview';
+        const initialSection =
+            String(window.location.hash || "").replace("#", "") || "overview";
         showActivitySection(initialSection);
         refreshSortIndicators();
         loadActivity();
@@ -1652,7 +2283,7 @@
         setInterval(loadActivity, 2500);
         setInterval(loadClientsHistory, 15000);
         setInterval(loadAuthLockouts, 15000);
-        document.addEventListener('visibilitychange', function () {
+        document.addEventListener("visibilitychange", function () {
             if (!document.hidden) {
                 loadActivity();
                 loadClientsHistory();

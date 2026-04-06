@@ -65,6 +65,10 @@ DEFAULT_SETTINGS = {
         "auth_ip_lockout_duration_seconds": 1800,
         # Permanent deny-list of IP/CIDR entries for authentication endpoints.
         "auth_permanent_ip_blacklist": [],
+        # ISO country codes (eg "US", "GB") to deny at request edge.
+        "auth_blocked_country_codes": [],
+        # Optional ISO country whitelist. When set, only these countries are allowed.
+        "auth_allowed_country_codes": [],
     },
     "library": {
         "paths": ["/games"],
@@ -99,6 +103,7 @@ DEFAULT_SETTINGS = {
     "titles": {
         "language": "en",
         "region": "US",
+        "prefer_english_metadata": False,
         "valid_keys": False,
         "manual_overrides": {},
     },
@@ -146,6 +151,7 @@ DEFAULT_SETTINGS = {
         "public": False,
         "external_tinfoil_only": False,
         "encrypt": True,
+        "tinfoil_only_mode": False,
         "fast_transfer_mode": False,
         "public_key": "",
         "clientCertPub": "-----BEGIN PUBLIC KEY-----",

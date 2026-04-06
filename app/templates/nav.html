@@ -31,6 +31,9 @@
             aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
+        {% set content_titles = ['Downloads', 'Upload', 'Manage'] %}
+        {% set backups_titles = ['Save Data Backups'] %}
+        {% set admin_titles = ['Activity', 'Users'] %}
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item">
@@ -47,9 +50,34 @@
                     </a>
                 </li>
                 {% endif %}
+                {% if current_user.is_admin or admin_account_created == false %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle{% if title in content_titles %} active" aria-current="page"{% else %}"{% endif %}"
+                        href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Content</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item{% if title == 'Downloads' %} active{% endif %}" href="/downloads">Downloads</a></li>
+                        <li><a class="dropdown-item{% if title == 'Upload' %} active{% endif %}" href="/upload">Upload</a></li>
+                        <li><a class="dropdown-item{% if title == 'Manage' %} active{% endif %}" href="/manage">Manage</a></li>
+                    </ul>
+                </li>
+                {% endif %}
                 {% if current_user.is_authenticated and current_user.has_backup_access() %}
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Save Data Backups' %} active" aria-current="page"{% else %}"{% endif %}" href="/saves">Save Data Backups</a>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle{% if title in backups_titles %} active" aria-current="page"{% else %}"{% endif %}"
+                        href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Backups</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item{% if title == 'Save Data Backups' %} active{% endif %}" href="/saves">Save Data Backups</a></li>
+                    </ul>
+                </li>
+                {% endif %}
+                {% if current_user.is_admin or admin_account_created == false %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle{% if title in admin_titles %} active" aria-current="page"{% else %}"{% endif %}"
+                        href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin</a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item{% if title == 'Users' %} active{% endif %}" href="/users">Users</a></li>
+                        <li><a class="dropdown-item{% if title == 'Activity' %} active{% endif %}" href="/activity">Activity</a></li>
+                    </ul>
                 </li>
                 {% endif %}
                 {% if current_user.is_admin or admin_account_created == false %}
@@ -57,38 +85,9 @@
                     <a class="nav-link{% if title == 'Settings' %} active" aria-current="page"{% else %}"{% endif %}" href="/settings">Settings</a>
                 </li>
                 {% endif %}
-                {% if current_user.is_admin or admin_account_created == false %}
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Users' %} active" aria-current="page"{% else %}"{% endif %}" href="/users">Users</a>
-                </li>
-                {% endif %}
-                {% if current_user.is_admin or admin_account_created == false %}
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Downloads' %} active" aria-current="page"{% else %}"{% endif %}" href="/downloads">Downloads</a>
-                </li>
-                {% endif %}
-                {% if current_user.is_admin or admin_account_created == false %}
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Manage' %} active" aria-current="page"{% else %}"{% endif %}" href="/manage">Manage</a>
-                </li>
-                {% endif %}
-                {% if current_user.is_admin or admin_account_created == false %}
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Upload' %} active" aria-current="page"{% else %}"{% endif %}" href="/upload">Upload</a>
-                </li>
-                {% endif %}
-                {% if current_user.is_admin or admin_account_created == false %}
-                <li class="nav-item">
-                    <a class="nav-link{% if title == 'Activity' %} active" aria-current="page"{% else %}"{% endif %}" href="/activity">Activity</a>
-                </li>
-                {% endif %}
             </ul>
             <div class="mx-auto d-flex align-items-center gap-3">
                 <div class="text-muted small d-none" id="librarySizeLabel">Library size: ...</div>
-                <div class="small text-muted d-flex align-items-center gap-2" id="libraryRebuildLabel">
-                    <span class="spinner-border spinner-border-sm text-warning d-none" id="libraryRebuildSpinner" role="status" aria-hidden="true"></span>
-                    <span id="libraryRebuildText">Library: Ready</span>
-                </div>
             </div>
             {% if identification_disabled %}
             <div class="alert alert-warning py-1 px-2 mb-0 small" role="alert">
@@ -99,6 +98,10 @@
                 {% if current_user.is_admin or admin_account_created == false %}
                 <a id="globalJobStatus" class="navbar-text small text-warning d-none text-decoration-none" href="/manage"></a>
                 {% endif %}
+                <div class="small text-muted d-flex align-items-center gap-2" id="libraryRebuildLabel">
+                    <span class="spinner-border spinner-border-sm text-warning d-none" id="libraryRebuildSpinner" role="status" aria-hidden="true"></span>
+                    <span id="libraryRebuildText">Library: Ready</span>
+                </div>
                 {% if current_user.is_authenticated %}
                 <ul class="navbar-nav">
                     <li class="nav-item">

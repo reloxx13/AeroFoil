@@ -1,5 +1,7 @@
 import json
+import ntpath
 import os
+import re
 import unittest
 from unittest.mock import patch
 
@@ -28,6 +30,13 @@ from app.downloads.manager import (
 from app.downloads.prowlarr import _normalize_result
 from app.downloads.usenet_client import add_nzb, list_active, list_completed, remove_history, remove_queue_item
 from app.downloads.usenet_client import _restrict_job_to_matching_update_files
+
+
+def _normalize_fixture_path(value):
+    text = str(value or "")
+    if re.match(r"^[A-Za-z]:[\\/]", text) or "\\" in text:
+        return text.replace("/", "\\")
+    return os.path.normpath(text)
 
 
 class ProwlarrProtocolTests(unittest.TestCase):
@@ -985,7 +994,7 @@ class CompletedAdoptionTests(unittest.TestCase):
         ))
 
         self.assertEqual(
-            _iter_importable_download_files("X:\\fixture-root\\Example Release NSW-GRP"),
+            [_normalize_fixture_path(path) for path in _iter_importable_download_files("X:\\fixture-root\\Example Release NSW-GRP")],
             [
                 "X:\\fixture-root\\Example Release NSW-GRP\\example-base.nsp.hdf",
                 "X:\\fixture-root\\Example Release NSW-GRP\\example-update.nsp",
@@ -1014,11 +1023,11 @@ class CompletedAdoptionTests(unittest.TestCase):
         result = _normalize_imported_wrapped_files("X:\\fixture-root\\Example Release NSW-GRP")
 
         self.assertEqual(result, "X:\\fixture-root\\Example Release NSW-GRP")
-        self.assertEqual(move_mock.call_args_list[0].args, (
+        self.assertEqual(tuple(_normalize_fixture_path(part) for part in move_mock.call_args_list[0].args), (
             "X:\\fixture-root\\Example Release NSW-GRP\\base.nsp.hdf",
             "X:\\fixture-root\\Example Release NSW-GRP\\base.nsp",
         ))
-        self.assertEqual(move_mock.call_args_list[1].args, (
+        self.assertEqual(tuple(_normalize_fixture_path(part) for part in move_mock.call_args_list[1].args), (
             "X:\\fixture-root\\Example Release NSW-GRP\\update.nsz.hdf",
             "X:\\fixture-root\\Example Release NSW-GRP\\update.nsz",
         ))
@@ -1468,8 +1477,8 @@ class ManagedCompletionStateTests(unittest.TestCase):
         )
 
         self.assertIsNone(reason)
-        self.assertIn("Updates\\v983040", moved_path)
-        self.assertIn("[UPDATE][v983040].nsp", moved_path)
+        self.assertIn("Updates\\v983040", _normalize_fixture_path(moved_path))
+        self.assertIn("[UPDATE][v983040].nsp", _normalize_fixture_path(moved_path))
         move_mock.assert_called_once_with(
             "C:\\tests\\completed\\sample_v983040.nsp.hdf",
             moved_path,
@@ -1504,7 +1513,7 @@ class ManagedCompletionStateTests(unittest.TestCase):
 
     @patch("app.downloads.manager._cleanup_download_path")
     @patch("app.downloads.manager._normalize_imported_wrapped_files", side_effect=lambda path: path[:-4] if path.endswith(".hdf") else path)
-    @patch("app.downloads.manager._build_generic_import_destination", side_effect=lambda dest_root, src_path: os.path.join(dest_root, os.path.basename(src_path)))
+    @patch("app.downloads.manager._build_generic_import_destination", side_effect=lambda dest_root, src_path: ntpath.join(dest_root, ntpath.basename(src_path)))
     @patch("app.downloads.manager.shutil.move")
     @patch(
         "app.downloads.manager._iter_importable_download_files",
@@ -1539,7 +1548,7 @@ class ManagedCompletionStateTests(unittest.TestCase):
         )
 
         self.assertIsNone(reason)
-        self.assertEqual(moved_path, "X:\\library\\sample-dlc.nsp")
+        self.assertEqual(_normalize_fixture_path(moved_path), "X:\\library\\sample-dlc.nsp")
         move_mock.assert_called_once_with(
             "C:\\tests\\completed\\sample-dlc.nsp.hdf",
             "X:\\library\\sample-dlc.nsp.hdf",

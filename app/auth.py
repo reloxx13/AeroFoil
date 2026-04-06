@@ -870,6 +870,77 @@ def get_users():
     return jsonify(all_users)
 
 
+@auth_blueprint.route('/api/admin/user-history/<int:user_id>')
+@access_required('admin')
+def get_user_history(user_id):
+    user = User.query.filter_by(id=user_id).first()
+    if not user:
+        return jsonify({'success': False, 'error': 'User not found.', 'history': []}), 404
+
+    limit = request.args.get('limit', 100)
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 100
+    limit = max(1, min(limit, 500))
+
+    try:
+        history = get_access_events(limit=limit, kinds=['transfer'], user=user.user)
+    except Exception as e:
+        logger.error(f'Failed to load history for user {user.user}: {e}')
+        return jsonify({'success': False, 'error': 'Failed to load user history.', 'history': []}), 500
+
+    title_ids = sorted({str(item.get('title_id') or '').strip().upper() for item in history if item.get('title_id')})
+    title_names = {}
+    if title_ids:
+        try:
+            from app import titles
+            with titles.titledb_session() as titledb_loaded:
+                if titledb_loaded:
+                    for title_id in title_ids:
+                        try:
+                            info = titles.get_game_info(title_id) or {}
+                            if info.get('name'):
+                                title_names[title_id] = info.get('name')
+                        except Exception:
+                            continue
+        except Exception:
+            title_names = {}
+
+    ip_set = set()
+    title_set = set()
+    total_bytes = 0
+    for item in history:
+        title_id = str(item.get('title_id') or '').strip().upper()
+        if title_id:
+            item['title_id'] = title_id
+            title_set.add(title_id)
+            if title_id in title_names:
+                item['title_name'] = title_names[title_id]
+        remote_addr = str(item.get('remote_addr') or '').strip()
+        if remote_addr:
+            ip_set.add(remote_addr)
+        try:
+            total_bytes += max(0, int(item.get('bytes_sent') or 0))
+        except Exception:
+            pass
+
+    return jsonify({
+        'success': True,
+        'user': {
+            'id': user.id,
+            'user': user.user,
+        },
+        'history': history,
+        'summary': {
+            'downloads': len(history),
+            'unique_titles': len(title_set),
+            'unique_ips': len(ip_set),
+            'total_bytes': total_bytes,
+        }
+    })
+
+
 @auth_blueprint.route('/api/auth/lockouts', methods=['GET'])
 @access_required('admin')
 def get_auth_lockouts():

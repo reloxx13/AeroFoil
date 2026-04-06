@@ -265,6 +265,32 @@ _DOWNLOAD_COUNT_BUFFER_FLUSH_S = 1.5
 _DOWNLOAD_COUNT_LAST_FLUSH_TS = 0.0
 
 
+def _read_int_env(env_key, default_value, minimum=None, maximum=None):
+    raw = os.environ.get(env_key)
+    if raw is None:
+        return int(default_value)
+    raw = str(raw).strip()
+    if not raw:
+        return int(default_value)
+    try:
+        value = int(raw)
+    except Exception:
+        value = int(default_value)
+    if minimum is not None:
+        value = max(int(minimum), value)
+    if maximum is not None:
+        value = min(int(maximum), value)
+    return int(value)
+
+
+ACCESS_EVENTS_QUERY_MAX_LIMIT = _read_int_env(
+    'AEROFOIL_ACCESS_EVENTS_QUERY_MAX',
+    _read_int_env('OWNFOIL_ACCESS_EVENTS_QUERY_MAX', 10000, minimum=100, maximum=200000),
+    minimum=100,
+    maximum=200000,
+)
+
+
 def flush_access_events_buffer(force=False):
     global _ACCESS_EVENT_LAST_FLUSH_TS
     now = time.time()
@@ -400,13 +426,13 @@ def add_access_event(
         return False
 
 
-def get_access_events(limit=100, kind=None, kinds=None):
+def get_access_events(limit=100, kind=None, kinds=None, user=None, users=None):
     flush_access_events_buffer(force=True)
     try:
         limit = int(limit)
     except Exception:
         limit = 100
-    limit = max(1, min(limit, 1000))
+    limit = max(1, min(limit, ACCESS_EVENTS_QUERY_MAX_LIMIT))
 
     q = AccessEvents.query
     if kinds:
@@ -418,6 +444,21 @@ def get_access_events(limit=100, kind=None, kinds=None):
             q = q.filter(AccessEvents.kind.in_(kinds))
     elif kind:
         q = q.filter_by(kind=str(kind))
+
+    user_values = []
+    if users:
+        try:
+            user_values.extend([str(value).strip() for value in users if value is not None and str(value).strip()])
+        except Exception:
+            user_values = []
+    elif user is not None and str(user).strip():
+        user_values.append(str(user).strip())
+
+    if user_values:
+        if len(user_values) == 1:
+            q = q.filter(AccessEvents.user == user_values[0])
+        else:
+            q = q.filter(AccessEvents.user.in_(user_values))
 
     events = q.order_by(AccessEvents.at.desc()).limit(limit).all()
     out = []

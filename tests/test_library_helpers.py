@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import unittest
 from collections import namedtuple
@@ -6,6 +7,13 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 TEST_TMP_ROOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".tmp")
+
+
+def _normalize_fixture_path(value):
+    text = str(value or "")
+    if re.match(r"^[A-Za-z]:[\\/]", text) or "\\" in text:
+        return text.replace("/", "\\")
+    return os.path.normpath(text)
 
 _IMPORT_ERROR = None
 flask_app = None
@@ -193,7 +201,7 @@ class LibraryHelperTests(unittest.TestCase):
         _pending_organize_paths.clear()
         try:
             enqueue_organize_paths(["X:\\fixture-root\\Example Release NSW-GRP"])
-            self.assertEqual(_pending_organize_paths, {
+            self.assertEqual({_normalize_fixture_path(path) for path in _pending_organize_paths}, {
                 "X:\\fixture-root\\Example Release NSW-GRP\\game.nsp",
                 "X:\\fixture-root\\Example Release NSW-GRP\\readme.nfo",
                 "X:\\fixture-root\\Example Release NSW-GRP\\subdir\\dlc.nsp",
@@ -231,7 +239,7 @@ class LibraryHelperTests(unittest.TestCase):
         _cleanup_import_staging_roots(["X:\\fixture-root\\Example Release NSW-GRP"])
 
         self.assertEqual(
-            [call.args[0] for call in remove_mock.call_args_list],
+            [_normalize_fixture_path(call.args[0]) for call in remove_mock.call_args_list],
             [
                 "X:\\fixture-root\\Example Release NSW-GRP\\subdir\\proof.nfo",
                 "X:\\fixture-root\\Example Release NSW-GRP\\notes.txt",

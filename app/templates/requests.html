@@ -26,47 +26,54 @@
 
         <div class="card bg-dark text-light mb-3">
           <div class="card-body">
-      <div class="row g-3 mb-3">
-        <div class="col-12 col-lg-8">
-          <input type="text" class="form-control" id="requestSearchBox" placeholder="Search by name or title id (e.g. Mario, 0100...)" autocomplete="off">
-          <div class="list-group mt-2" id="requestSearchResults"></div>
-        </div>
-        <div class="col-12 col-lg-4">
-          <div class="border rounded p-3">
-            <div class="fw-semibold">Selected</div>
-            <div class="text-muted small" id="selectedTitleText">None</div>
-            <button class="btn btn-warning btn-sm mt-3" id="submitRequestBtn" disabled>
-              <i class="bi bi-send"></i> Submit request
-            </button>
-            <div class="text-muted small mt-2" id="requestSubmitStatus"></div>
+            <div class="row g-3 mb-3">
+              <div class="col-12">
+                <div class="input-group">
+                  <input type="text" class="form-control" id="requestSearchBox" placeholder="Search by name or title id (e.g. Mario, 0100...)" autocomplete="off">
+                  <button class="btn btn-warning text-nowrap" id="submitRequestBtn" disabled>
+                    <i class="bi bi-send"></i> Submit request
+                  </button>
+                </div>
+                <div class="list-group mt-2" id="requestSearchResults"></div>
+              </div>
+              <div class="col-12">
+                <div class="border rounded p-3 h-100">
+                  <div class="fw-semibold mb-2">Selected</div>
+                  <div class="text-muted small text-truncate text-nowrap" id="selectedTitleText" title="None">None</div>
+                  <div class="form-text mt-2 mb-0">Choose a search result, then submit the request below.</div>
+                </div>
+              </div>
+            </div>
+            <div class="text-muted small border-top pt-3 mb-0" id="requestSubmitStatus"></div>
+
+            {% if current_user.is_admin or admin_account_created == false %}
+            <div class="border-top mt-3 pt-3">
+              <div class="d-flex flex-column flex-lg-row gap-2 align-items-lg-center">
+                <div class="flex-grow-1">
+                  <input type="text" class="form-control" id="adminSearchBox" placeholder="Filter by title id, name, user...">
+                </div>
+              </div>
+              <div class="table-responsive mt-3">
+                <table class="table table-dark table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Requested</th>
+                      <th>Title</th>
+                      <th>User</th>
+                      <th>Status</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="requestsTableBody"></tbody>
+                </table>
+              </div>
+              <div class="text-muted small mt-3" id="requestsStatus"></div>
+            </div>
+            {% else %}
+            {% endif %}
           </div>
         </div>
       </div>
-      {% if current_user.is_admin or admin_account_created == false %}
-      <div class="d-flex flex-column flex-lg-row gap-2 align-items-lg-center">
-        <div class="flex-grow-1">
-          <input type="text" class="form-control" id="adminSearchBox" placeholder="Filter by title id, name, user...">
-        </div>
-      </div>
-      <div class="table-responsive mt-2">
-        <table class="table table-dark table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Requested</th>
-              <th>Title</th>
-              <th>User</th>
-              <th>Status</th>
-              <th class="text-end">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="requestsTableBody"></tbody>
-        </table>
-      </div>
-      <div class="text-muted small mt-2" id="requestsStatus"></div>
-      {% else %}
-      {% endif %}
-    </div>
-  </div>
       </div>
     </div>
   </div>
@@ -141,6 +148,18 @@
     return value || '-';
   }
 
+  function formatPublishedAtTooltip(publishedAt) {
+    const text = String(publishedAt || '').trim();
+    if (!text) {
+      return '';
+    }
+    const date = new Date(text);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    return `Published ${date.toLocaleString()}`;
+  }
+
   function buildRequestDownloadSearchRow(item) {
     const cells = [
       `<td>${escapeHtml(item.title || '-')}</td>`,
@@ -150,7 +169,9 @@
       cells.push(`<td>${escapeHtml(getProtocolLabel(item.protocol))}</td>`);
     }
     if (downloadUiVisibility.show_usenet_columns) {
-      cells.push(`<td>${escapeHtml(item.age_label || '-')}</td>`);
+      const ageTooltip = formatPublishedAtTooltip(item.published_at);
+      const tooltipAttr = ageTooltip ? ` title="${escapeHtml(ageTooltip)}"` : '';
+      cells.push(`<td${tooltipAttr}>${escapeHtml(item.age_label || '-')}</td>`);
     }
     cells.push(`<td>${formatBytes(item.size)}</td>`);
     if (downloadUiVisibility.show_torrent_columns) {
@@ -235,7 +256,10 @@
       const results = await fetchSearchResults(q);
       renderTitleSearchResults('requestSearchResults', results, item => {
         selectedTitle = item;
-        document.getElementById('selectedTitleText').textContent = `${item.name || 'Unrecognized'} (${item.id})`;
+        const selectedText = `${item.name || 'Unrecognized'} (${item.id})`;
+        const selectedTitleText = document.getElementById('selectedTitleText');
+        selectedTitleText.textContent = selectedText;
+        selectedTitleText.title = selectedText;
         document.getElementById('submitRequestBtn').disabled = false;
         document.getElementById('requestSubmitStatus').textContent = '';
         document.getElementById('requestSearchBox').value = `${item.name || ''}`.trim();
@@ -255,7 +279,9 @@
       status.textContent = data.message || 'Request created.';
       document.getElementById('submitRequestBtn').disabled = true;
       selectedTitle = null;
-      document.getElementById('selectedTitleText').textContent = 'None';
+      const selectedTitleText = document.getElementById('selectedTitleText');
+      selectedTitleText.textContent = 'None';
+      selectedTitleText.title = 'None';
     } else {
       status.textContent = (data && data.message) ? data.message : 'Request failed.';
     }

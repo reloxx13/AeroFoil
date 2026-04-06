@@ -469,7 +469,8 @@ shop_sections_cache = {
     'limit': None,
     'timestamp': 0,
     'state_token': None,
-    'payload': None
+    'payload': None,
+    'encrypted': {},
 }
 shop_sections_cache_lock = threading.Lock()
 shop_sections_refresh_lock = threading.Lock()
@@ -481,6 +482,7 @@ shop_root_cache = {
     'encrypted': {},
 }
 _SHOP_ROOT_ENCRYPTED_CACHE_LIMIT = 8
+_SHOP_SECTIONS_ENCRYPTED_CACHE_LIMIT = 8
 _TITLES_METADATA_CACHE_VERSION = 3
 titles_metadata_cache_lock = threading.Lock()
 titles_metadata_cache = {
@@ -642,6 +644,54 @@ def _get_cached_encrypted_shop_payload(shop_payload, public_key, verified_host):
             ordered_keys = list(encrypted_cache.keys())[-_SHOP_ROOT_ENCRYPTED_CACHE_LIMIT:]
             shop_root_cache['encrypted'] = {k: encrypted_cache[k] for k in ordered_keys}
     return payload
+
+
+def _get_cached_encrypted_shop_sections_payload(shop_payload, public_key, cache_limit, full_catalog=False):
+    state_token = _get_titledb_aware_state_token()
+    cache_key = (state_token, int(cache_limit), bool(full_catalog), str(public_key or ''))
+
+    with shop_sections_cache_lock:
+        encrypted_cache = shop_sections_cache.setdefault('encrypted', {})
+        cached = encrypted_cache.get(cache_key)
+        if isinstance(cached, (bytes, bytearray)):
+            return bytes(cached)
+
+    payload = encrypt_shop(shop_payload, public_key_pem=public_key, compression_level=6)
+    with shop_sections_cache_lock:
+        encrypted_cache = shop_sections_cache.setdefault('encrypted', {})
+        encrypted_cache[cache_key] = payload
+        if len(encrypted_cache) > _SHOP_SECTIONS_ENCRYPTED_CACHE_LIMIT:
+            ordered_keys = list(encrypted_cache.keys())[-_SHOP_SECTIONS_ENCRYPTED_CACHE_LIMIT:]
+            shop_sections_cache['encrypted'] = {k: encrypted_cache[k] for k in ordered_keys}
+    return payload
+
+
+def _respond_with_shop_payload(payload, verified_host=None, cache_kind=None, cache_limit=None, full_catalog=False):
+    response_payload = payload
+    if verified_host is not None and not response_payload.get('referrer'):
+        response_payload = dict(response_payload)
+        response_payload['referrer'] = f"https://{verified_host}"
+
+    if app_settings['shop']['encrypt']:
+        public_key = app_settings['shop'].get('public_key')
+        if cache_kind == 'root':
+            encrypted = _get_cached_encrypted_shop_payload(
+                response_payload,
+                public_key=public_key,
+                verified_host=verified_host,
+            )
+        elif cache_kind == 'sections':
+            encrypted = _get_cached_encrypted_shop_sections_payload(
+                response_payload,
+                public_key=public_key,
+                cache_limit=cache_limit,
+                full_catalog=full_catalog,
+            )
+        else:
+            encrypted = encrypt_shop(response_payload, public_key_pem=public_key, compression_level=6)
+        return Response(encrypted, mimetype='application/octet-stream')
+
+    return jsonify(response_payload)
 
 def _is_titledb_unrecognized(info):
     try:
@@ -853,7 +903,7 @@ def _get_discovery_sections(limit=12):
 # Set to 0 to disable in-memory caching entirely.
 # Set to None to disable expiry (cache refreshes on library rebuild).
 SHOP_SECTIONS_CACHE_TTL_S = _read_cache_ttl('SHOP_SECTIONS_CACHE_TTL_S', None)
-SHOP_SECTIONS_ALL_ITEMS_CAP = _read_cache_ttl('SHOP_SECTIONS_ALL_ITEMS_CAP', 300)
+SHOP_SECTIONS_ALL_ITEMS_CAP = _read_cache_ttl('SHOP_SECTIONS_ALL_ITEMS_CAP', None)
 SHOP_SECTIONS_ALL_ITEMS_CAP_NO_TITLEDB = _read_cache_ttl('SHOP_SECTIONS_ALL_ITEMS_CAP_NO_TITLEDB', 120)
 SHOP_SECTIONS_MAX_IN_MEMORY_BYTES = _read_cache_ttl('SHOP_SECTIONS_MAX_IN_MEMORY_BYTES', 4 * 1024 * 1024)
 MEDIA_INDEX_TTL_S = _read_cache_ttl('MEDIA_INDEX_TTL_S', None)
@@ -928,11 +978,13 @@ def _store_shop_sections_cache(payload, limit, timestamp, state_token, persist_d
             shop_sections_cache['limit'] = None
             shop_sections_cache['timestamp'] = 0
             shop_sections_cache['state_token'] = None
+            shop_sections_cache['encrypted'] = {}
         else:
             shop_sections_cache['payload'] = cache_payload
             shop_sections_cache['limit'] = limit
             shop_sections_cache['timestamp'] = timestamp
             shop_sections_cache['state_token'] = state_token
+            shop_sections_cache['encrypted'] = {}
 
     if persist_disk:
         _save_shop_sections_cache_to_disk(payload, limit, timestamp, state_token=state_token)
@@ -1275,6 +1327,24 @@ MAX_LIBRARY_UPLOAD_SIZE = 64 * 1024 * 1024 * 1024  # 64GB for game files
 MAX_SAVE_UPLOAD_SIZE = 4 * 1024 * 1024 * 1024  # 4GB for save archives
 # Leave room for multipart form overhead beyond the file payload itself.
 DEFAULT_WSGI_MAX_REQUEST_BODY_SIZE = MAX_LIBRARY_UPLOAD_SIZE + (128 * 1024 * 1024)
+ACTIVITY_API_MAX_LIMIT = _read_int_env(
+    'AEROFOIL_ACTIVITY_API_MAX_LIMIT',
+    _read_int_env('OWNFOIL_ACTIVITY_API_MAX_LIMIT', 10000, minimum=100, maximum=200000),
+    minimum=100,
+    maximum=200000,
+)
+CLIENTS_HISTORY_API_MAX_LIMIT = _read_int_env(
+    'AEROFOIL_CLIENTS_HISTORY_API_MAX_LIMIT',
+    _read_int_env('OWNFOIL_CLIENTS_HISTORY_API_MAX_LIMIT', 20000, minimum=100, maximum=200000),
+    minimum=100,
+    maximum=200000,
+)
+CLIENTS_HISTORY_CSV_MAX_LIMIT = _read_int_env(
+    'AEROFOIL_CLIENTS_HISTORY_CSV_MAX_LIMIT',
+    _read_int_env('OWNFOIL_CLIENTS_HISTORY_CSV_MAX_LIMIT', 50000, minimum=100, maximum=200000),
+    minimum=100,
+    maximum=200000,
+)
 SAVE_SYNC_DIR = os.path.join(DATA_DIR, 'saves')
 MAX_TITLE_ID_LENGTH = 16
 MAX_SAVE_NOTE_LENGTH = 120
@@ -1800,13 +1870,15 @@ def _block_permanent_blacklist_requests():
             settings = {}
         auth_config = _get_auth_protection_config(settings)
         client_ip = _effective_client_ip(settings)
+        geo = {}
+        if client_ip and not _is_private_ip(client_ip):
+            try:
+                geo = lookup_geoip(client_ip) or {}
+            except Exception:
+                geo = {}
+
         if _is_permanently_blocked_ip(client_ip, auth_config):
             try:
-                geo = {}
-                try:
-                    geo = lookup_geoip(client_ip) or {}
-                except Exception:
-                    geo = {}
                 _log_access_dedup(
                     kind='permanent_ip_blocked',
                     dedupe_key=f"{client_ip}|{request.path}",
@@ -1817,6 +1889,58 @@ def _block_permanent_blacklist_requests():
                     user_agent=request.headers.get('User-Agent'),
                     country=geo.get('country'),
                     country_code=geo.get('country_code'),
+                    region=geo.get('region'),
+                    city=geo.get('city'),
+                    latitude=geo.get('latitude'),
+                    longitude=geo.get('longitude'),
+                )
+            except Exception:
+                pass
+            return Response(status=404)
+
+        blocked_country_codes = {
+            str(code or '').strip().upper()
+            for code in ((settings.get('security') or {}).get('auth_blocked_country_codes') or [])
+            if str(code or '').strip()
+        }
+        allowed_country_codes = {
+            str(code or '').strip().upper()
+            for code in ((settings.get('security') or {}).get('auth_allowed_country_codes') or [])
+            if str(code or '').strip()
+        }
+        country_code = str(geo.get('country_code') or '').strip().upper()
+        if blocked_country_codes and country_code and country_code in blocked_country_codes:
+            try:
+                _log_access_dedup(
+                    kind='country_blocked',
+                    dedupe_key=f"{client_ip}|{request.path}|{country_code}",
+                    ok=False,
+                    status_code=404,
+                    filename=request.path,
+                    remote_addr=client_ip,
+                    user_agent=request.headers.get('User-Agent'),
+                    country=geo.get('country'),
+                    country_code=country_code,
+                    region=geo.get('region'),
+                    city=geo.get('city'),
+                    latitude=geo.get('latitude'),
+                    longitude=geo.get('longitude'),
+                )
+            except Exception:
+                pass
+            return Response(status=404)
+        if allowed_country_codes and country_code and country_code not in allowed_country_codes:
+            try:
+                _log_access_dedup(
+                    kind='country_not_whitelisted',
+                    dedupe_key=f"{client_ip}|{request.path}|{country_code}|allow",
+                    ok=False,
+                    status_code=404,
+                    filename=request.path,
+                    remote_addr=client_ip,
+                    user_agent=request.headers.get('User-Agent'),
+                    country=geo.get('country'),
+                    country_code=country_code,
                     region=geo.get('region'),
                     city=geo.get('city'),
                     latitude=geo.get('latitude'),
@@ -1876,6 +2000,7 @@ _transfer_finalize_timers_lock = threading.Lock()
 _transfer_finalize_timers = {}
 
 _TRANSFER_FINALIZE_GRACE_S = 30
+_ACTIVE_TRANSFER_STALE_S = 300
 
 
 def _get_request_user():
@@ -2436,6 +2561,32 @@ def _transfer_session_finish(key, ok, status_code, bytes_sent):
     timer.start()
 
 
+def _prune_stale_active_transfers(now=None, stale_after_s=None):
+    current_ts = float(now if now is not None else time.time())
+    stale_s = float(stale_after_s if stale_after_s is not None else _ACTIVE_TRANSFER_STALE_S)
+    removed = []
+    with _active_transfers_lock:
+        for transfer_id, meta in list(_active_transfers.items()):
+            if not isinstance(meta, dict):
+                _active_transfers.pop(transfer_id, None)
+                removed.append(transfer_id)
+                continue
+            last_seen_at = float(meta.get('last_seen_at') or meta.get('started_at') or 0.0)
+            if last_seen_at <= 0:
+                _active_transfers.pop(transfer_id, None)
+                removed.append(transfer_id)
+                continue
+            if (current_ts - last_seen_at) > stale_s:
+                _active_transfers.pop(transfer_id, None)
+                removed.append(transfer_id)
+    if removed:
+        try:
+            logger.warning("Pruned %s stale live transfer entries.", len(removed))
+        except Exception:
+            pass
+    return removed
+
+
 @app.before_request
 def _activity_before_request():
     # Track recent clients in-memory for the admin activity page.
@@ -2794,15 +2945,11 @@ def tinfoil_access(f):
                                         {'id': 'all', 'title': 'All', 'items': [placeholder_item]},
                                     ]
                                 }
-                                return jsonify(empty_sections)
+                                return _respond_with_shop_payload(empty_sections)
 
                             placeholder = {"url": "/api/frozen/notice#frozen.txt", "size": 1}
                             shop = {"success": message, "files": [placeholder]}
-                            if request.verified_host is not None:
-                                shop["referrer"] = f"https://{request.verified_host}"
-                            if app_settings['shop']['encrypt']:
-                                return Response(encrypt_shop(shop, app_settings['shop'].get('public_key')), mimetype='application/octet-stream')
-                            return jsonify(shop)
+                            return _respond_with_shop_payload(shop, verified_host=request.verified_host)
                 except Exception:
                     pass
                 return tinfoil_error(auth_error)
@@ -2858,15 +3005,11 @@ def tinfoil_access(f):
                                 {'id': 'all', 'title': 'All', 'items': [placeholder_item]},
                             ]
                         }
-                        return jsonify(empty_sections)
+                        return _respond_with_shop_payload(empty_sections)
 
                     placeholder = {"url": "/api/frozen/notice#frozen.txt", "size": 1}
                     shop = {"success": message, "files": [placeholder]}
-                    if request.verified_host is not None:
-                        shop["referrer"] = f"https://{request.verified_host}"
-                    if app_settings['shop']['encrypt']:
-                        return Response(encrypt_shop(shop, app_settings['shop'].get('public_key')), mimetype='application/octet-stream')
-                    return jsonify(shop)
+                    return _respond_with_shop_payload(shop, verified_host=request.verified_host)
 
                 return tinfoil_error(message)
         except Exception:
@@ -2901,6 +3044,8 @@ def access_shop_auth():
 def index():
     is_shop_client = _is_shop_client_request()
     is_allowed_external_client = _is_shop_client_request()
+    tinfoil_only_mode = bool((app_settings.get('shop') or {}).get('tinfoil_only_mode', False))
+    prefers_html = bool(request.accept_mimetypes.accept_html)
     if bool(app_settings.get('shop', {}).get('external_tinfoil_only', False)):
         remote = _effective_remote_addr()
         if remote and not _is_private_ip(remote) and not is_allowed_external_client:
@@ -2912,11 +3057,6 @@ def index():
         shop = {
             "success": app_settings['shop']['motd']
         }
-        
-        if request.verified_host is not None:
-            # enforce client side host verification
-            shop["referrer"] = f"https://{request.verified_host}"
-            
         shop["files"] = _get_cached_shop_files()
 
         if _is_cyberfoil_request():
@@ -2928,19 +3068,16 @@ def index():
                 duration_ms=int((time.time() - start_ts) * 1000),
             )
 
-        if app_settings['shop']['encrypt']:
-            encrypted = _get_cached_encrypted_shop_payload(
-                shop,
-                public_key=app_settings['shop'].get('public_key'),
-                verified_host=request.verified_host
-            )
-            return Response(encrypted, mimetype='application/octet-stream')
-
-        return jsonify(shop)
+        return _respond_with_shop_payload(shop, verified_host=request.verified_host, cache_kind='root')
     
-    if is_shop_client:
-    # if True:
-        logger.info(f"Shop client connection from {request.remote_addr}")
+    if is_shop_client or (tinfoil_only_mode and not prefers_html):
+        logger.info(
+            "Serving shop protocol response from %s (client_detected=%s, tinfoil_only_mode=%s, prefers_html=%s)",
+            request.remote_addr,
+            bool(is_shop_client),
+            bool(tinfoil_only_mode),
+            bool(prefers_html),
+        )
         return access_tinfoil_shop()
 
     # Frozen accounts: web UI should only show the MOTD message.
@@ -3331,6 +3468,7 @@ def _trim_download_search_results(results, limit=50):
             'protocol': r.get('protocol'),
             'age_minutes': r.get('age_minutes'),
             'age_label': r.get('age_label'),
+            'published_at': r.get('published_at'),
         }
         for r in (results or [])[:limit]
     ]
@@ -3401,7 +3539,9 @@ def admin_activity_api():
         limit = int(limit)
     except Exception:
         limit = 100
-    limit = max(1, min(limit, 1000))
+    limit = max(1, min(limit, ACTIVITY_API_MAX_LIMIT))
+
+    _prune_stale_active_transfers()
 
     # Snapshot active transfers.
     with _active_transfers_lock:
@@ -3481,13 +3621,18 @@ def admin_activity_api():
             title_ids.add(item['title_id'])
 
     title_names = {}
-    for tid in title_ids:
-        try:
-            info = titles.get_game_info(tid)
-            if info and info.get('name'):
-                title_names[tid] = info.get('name')
-        except Exception:
-            pass
+    try:
+        with titles.titledb_session() as titledb_loaded:
+            if titledb_loaded:
+                for tid in title_ids:
+                    try:
+                        info = titles.get_game_info(tid)
+                        if info and info.get('name'):
+                            title_names[tid] = info.get('name')
+                    except Exception:
+                        pass
+    except Exception:
+        title_names = {}
 
     for item in live:
         tid = item.get('title_id')
@@ -3515,7 +3660,7 @@ def admin_clients_history_api():
         limit = int(limit)
     except Exception:
         limit = 250
-    limit = max(1, min(limit, 2000))
+    limit = max(1, min(limit, CLIENTS_HISTORY_API_MAX_LIMIT))
     try:
         history = get_access_events(limit=limit, kinds=['client_seen'])
         _attach_client_meta(history)
@@ -3532,7 +3677,7 @@ def admin_clients_history_csv_api():
         limit = int(limit)
     except Exception:
         limit = 2000
-    limit = max(1, min(limit, 10000))
+    limit = max(1, min(limit, CLIENTS_HISTORY_CSV_MAX_LIMIT))
 
     try:
         items = get_access_events(limit=limit, kinds=['client_seen'])
@@ -3655,6 +3800,7 @@ def set_titles_settings_api():
     settings = request.json
     region = settings['region']
     language = settings['language']
+    prefer_english_metadata = bool(settings.get('prefer_english_metadata'))
     languages_file = os.path.join(TITLEDB_DIR, 'languages.json')
     if os.path.exists(languages_file):
         with open(languages_file) as f:
@@ -3680,7 +3826,7 @@ def set_titles_settings_api():
         }
         return jsonify(resp)
     
-    set_titles_settings(region, language)
+    set_titles_settings(region, language, prefer_english_metadata=prefer_english_metadata)
     reload_conf()
     titledb.update_titledb(app_settings)
     post_library_change()
@@ -3700,6 +3846,8 @@ def set_shop_settings_api():
         'auth_ip_lockout_window_seconds',
         'auth_ip_lockout_duration_seconds',
         'auth_permanent_ip_blacklist',
+        'auth_blocked_country_codes',
+        'auth_allowed_country_codes',
     }
     shop_data = dict(data)
     security_data = {}
@@ -3708,6 +3856,12 @@ def set_shop_settings_api():
             security_data[key] = shop_data.pop(key)
 
     shop_data.setdefault('host', '')
+    current_settings = load_settings(force_reload=True)
+    merged_shop = dict(current_settings.get('shop', {}))
+    merged_shop.update(shop_data)
+    success, errors = verify_settings('shop', merged_shop)
+    if not success:
+        return jsonify({'success': False, 'errors': errors}), 400
     set_shop_settings(shop_data)
     if security_data:
         set_security_settings(security_data)
@@ -5752,6 +5906,7 @@ def set_manual_title_info_api():
         shop_sections_cache['timestamp'] = 0
         shop_sections_cache['limit'] = None
         shop_sections_cache['state_token'] = None
+        shop_sections_cache['encrypted'] = {}
     with titles_metadata_cache_lock:
         titles_metadata_cache['version'] = _TITLES_METADATA_CACHE_VERSION
         titles_metadata_cache['state_token'] = None
@@ -5831,6 +5986,7 @@ def serve_game(id):
     meta = {
         'id': transfer_id,
         'started_at': start_ts,
+        'last_seen_at': start_ts,
         'user': username,
         'remote_addr': remote_addr,
         'user_agent': user_agent,
@@ -5915,9 +6071,10 @@ def serve_game(id):
                     state['sent'] = int(state.get('sent') or 0) + len(chunk)
                     if state['sent'] % (1024 * 1024) < len(chunk):
                         _transfer_session_progress(session_key, state['sent'])
-                        with _active_transfers_lock:
-                            if transfer_id in _active_transfers:
-                                _active_transfers[transfer_id]['bytes_sent'] = state['sent']
+                    with _active_transfers_lock:
+                        if transfer_id in _active_transfers:
+                            _active_transfers[transfer_id]['bytes_sent'] = state['sent']
+                            _active_transfers[transfer_id]['last_seen_at'] = time.time()
                 except Exception:
                     pass
                 yield chunk
@@ -5972,6 +6129,7 @@ def shop_sections_api():
             shop_sections_cache['limit'] = None
             shop_sections_cache['timestamp'] = 0
             shop_sections_cache['state_token'] = None
+            shop_sections_cache['encrypted'] = {}
 
     if payload is None:
         if SHOP_SECTIONS_CACHE_TTL_S is None or SHOP_SECTIONS_CACHE_TTL_S > 0:
@@ -6004,7 +6162,12 @@ def shop_sections_api():
             duration_ms=int((time.time() - start_ts) * 1000),
         )
 
-    return jsonify(payload)
+    return _respond_with_shop_payload(
+        payload,
+        cache_kind='sections',
+        cache_limit=cache_limit,
+        full_catalog=is_cyberfoil,
+    )
 
 
 @app.get('/api/shop/icon/<title_id>')
@@ -6338,6 +6501,7 @@ def _run_post_library_change():
                 shop_sections_cache['timestamp'] = 0
                 shop_sections_cache['limit'] = None
                 shop_sections_cache['state_token'] = None
+                shop_sections_cache['encrypted'] = {}
             _invalidate_shop_root_cache()
             with titles_metadata_cache_lock:
                 titles_metadata_cache['version'] = _TITLES_METADATA_CACHE_VERSION

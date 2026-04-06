@@ -87,18 +87,29 @@
                     </div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle" id="userTable">
-                        <thead>
-                            <tr>
-                                <th scope="col" role="button" id="usersSortUser" data-sort="user">User <span class="text-muted" id="sortUserIcon"></span></th>
-                                <th scope="col" role="button" id="usersSortPerms" data-sort="perms">Permissions <span class="text-muted" id="sortPermsIcon"></span></th>
-                                <th scope="col">Client</th>
-                                <th scope="col" class="text-end">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                <div class="card mb-3 users-table-card">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+                            <div>
+                                <h5 class="card-title mb-1">Accounts</h5>
+                                <div class="text-muted small">Usernames, permissions, last-seen client details, and account actions.</div>
+                            </div>
+                            <div class="text-muted small" id="usersCountLabelInline">Loading users...</div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle users-table mb-0" id="userTable">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" role="button" id="usersSortUser" data-sort="user">User <span class="text-muted" id="sortUserIcon"></span></th>
+                                        <th scope="col" role="button" id="usersSortPerms" data-sort="perms">Permissions <span class="text-muted" id="sortPermsIcon"></span></th>
+                                        <th scope="col">Client</th>
+                                        <th scope="col" class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 <nav aria-label="Users pagination" class="mt-3">
                     <ul class="pagination justify-content-center" id="usersPagination"></ul>
@@ -226,20 +237,146 @@
                     </div>
                 </div>
 
+                <div class="modal fade" id="userHistoryModal" tabindex="-1" aria-labelledby="userHistoryModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <div>
+                                    <h1 class="modal-title fs-5" id="userHistoryModalLabel">User history</h1>
+                                    <div class="text-muted small" id="userHistorySummaryText">Loading history...</div>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                                    <div class="text-muted small">Recent completed transfer events for this account.</div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <label for="userHistoryLimitSelect" class="form-label mb-0 small text-muted">Rows</label>
+                                        <select class="form-select form-select-sm" id="userHistoryLimitSelect" style="width: 110px;">
+                                            <option value="25">25</option>
+                                            <option value="50" selected>50</option>
+                                            <option value="100">100</option>
+                                            <option value="250">250</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped align-middle users-table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>When</th>
+                                                <th>Title</th>
+                                                <th>File</th>
+                                                <th>IP</th>
+                                                <th>Status</th>
+                                                <th>Sent</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="userHistoryTableBody">
+                                            <tr><td colspan="6" class="text-muted">Loading history...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 </div>
 
 <style>
+    .users-table-card .card-body {
+        padding: 1.1rem 1.1rem 1rem;
+    }
+
+    .users-table {
+        --bs-table-bg: transparent;
+        --bs-table-border-color: rgba(255, 255, 255, 0.08);
+        --bs-table-hover-bg: rgba(255, 255, 255, 0.04);
+        margin-bottom: 0;
+    }
+
+    .users-table thead th {
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--bs-secondary-color);
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border-bottom-width: 1px;
+        white-space: nowrap;
+    }
+
+    .users-table tbody td {
+        padding-top: 0.9rem;
+        padding-bottom: 0.9rem;
+        vertical-align: middle;
+    }
+
+    .users-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .user-name-block {
+        display: grid;
+        gap: 0.18rem;
+        min-width: 0;
+    }
+
+    .user-name-code {
+        font-size: 0.95rem;
+        color: var(--bs-body-color);
+        word-break: break-word;
+    }
+
+    .user-name-meta {
+        color: var(--bs-secondary-color);
+        font-size: 0.8rem;
+    }
+
+    .user-perms {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .user-actions {
+        display: inline-flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.35rem;
+    }
+
     .client-meta {
         display: grid;
-        gap: 0.2rem;
+        gap: 0.22rem;
         font-size: 0.82rem;
     }
 
     .client-meta code {
         font-size: 0.78rem;
+    }
+
+    .client-meta-line {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        min-width: 0;
+        line-height: 1.2;
+    }
+
+    .client-meta-label {
+        color: var(--bs-secondary-color);
+        min-width: 3.9rem;
+        flex-shrink: 0;
+    }
+
+    .client-meta-value {
+        min-width: 0;
+        word-break: break-word;
     }
 
     .flag-icon {
@@ -251,6 +388,17 @@
         margin-right: 0.35rem;
         vertical-align: -1px;
     }
+
+    .history-title-cell {
+        display: grid;
+        gap: 0.18rem;
+        min-width: 0;
+    }
+
+    .history-title-meta {
+        color: var(--bs-secondary-color);
+        font-size: 0.78rem;
+    }
 </style>
 
 <script>
@@ -260,6 +408,8 @@
     let pageSize = 25;
     let sortKey = 'user';
     let sortDir = 'asc';
+    let historyUserId = null;
+    let historyUserName = '';
 
     function getInputVal(inputId) {
         return $("#" + inputId).val();
@@ -387,6 +537,83 @@
         return dt.toLocaleString();
     }
 
+    function _formatBytes(bytes) {
+        const value = Number(bytes || 0);
+        if (!Number.isFinite(value) || value <= 0) {
+            return '-';
+        }
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        let size = value;
+        let unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex += 1;
+        }
+        const precision = size >= 100 || unitIndex === 0 ? 0 : 1;
+        return `${size.toFixed(precision)} ${units[unitIndex]}`;
+    }
+
+    function renderUserHistory(history, summary) {
+        const rows = Array.isArray(history) ? history : [];
+        const $tbody = $('#userHistoryTableBody');
+        $tbody.empty();
+        if (!rows.length) {
+            $tbody.append('<tr><td colspan="6" class="text-muted">No download history for this user yet.</td></tr>');
+        } else {
+            rows.forEach(item => {
+                const at = _escapeHtml(_formatTimestamp(item['at']));
+                const titleName = _escapeHtml(item['title_name'] || item['filename'] || 'Unknown title');
+                const titleId = _escapeHtml(item['title_id'] || '-');
+                const filename = _escapeHtml(item['filename'] || '-');
+                const remoteAddr = _escapeHtml(item['remote_addr'] || '-');
+                const statusCode = item['status_code'] != null ? _escapeHtml(String(item['status_code'])) : '-';
+                const ok = item['ok'] !== false;
+                const statusBadge = ok
+                    ? `<span class="badge text-bg-success">${statusCode}</span>`
+                    : `<span class="badge text-bg-danger">${statusCode}</span>`;
+                const bytesSent = _escapeHtml(_formatBytes(item['bytes_sent']));
+                $tbody.append(
+                    '<tr>'
+                    + `<td>${at}</td>`
+                    + `<td><div class="history-title-cell"><div>${titleName}</div><div class="history-title-meta"><code>${titleId}</code></div></div></td>`
+                    + `<td><code>${filename}</code></td>`
+                    + `<td><code>${remoteAddr}</code></td>`
+                    + `<td>${statusBadge}</td>`
+                    + `<td>${bytesSent}</td>`
+                    + '</tr>'
+                );
+            });
+        }
+
+        const downloads = Number(summary?.downloads || 0);
+        const uniqueTitles = Number(summary?.unique_titles || 0);
+        const uniqueIps = Number(summary?.unique_ips || 0);
+        const totalBytes = _formatBytes(summary?.total_bytes || 0);
+        $('#userHistorySummaryText').text(
+            `${downloads} downloads, ${uniqueTitles} titles, ${uniqueIps} IPs, ${totalBytes} sent`
+        );
+    }
+
+    function loadUserHistory() {
+        if (!historyUserId) {
+            return;
+        }
+        const limit = parseInt($('#userHistoryLimitSelect').val() || '50', 10) || 50;
+        $('#userHistorySummaryText').text(`Loading history for ${historyUserName}...`);
+        $('#userHistoryTableBody').html('<tr><td colspan="6" class="text-muted">Loading history...</td></tr>');
+        $.getJSON(`/api/admin/user-history/${encodeURIComponent(historyUserId)}?limit=${encodeURIComponent(limit)}`, function (result) {
+            if (!result || !result['success']) {
+                $('#userHistorySummaryText').text(result?.error || 'Failed to load history.');
+                $('#userHistoryTableBody').html('<tr><td colspan="6" class="text-danger">Failed to load history.</td></tr>');
+                return;
+            }
+            renderUserHistory(result['history'], result['summary']);
+        }).fail(function () {
+            $('#userHistorySummaryText').text('Failed to load history.');
+            $('#userHistoryTableBody').html('<tr><td colspan="6" class="text-danger">Failed to load history.</td></tr>');
+        });
+    }
+
     function renderUsers() {
         const users = _filteredUsers();
         const total = users.length;
@@ -394,6 +621,7 @@
         const pageItems = users.slice(startIdx, startIdx + pageSize);
 
         $('#usersCountLabel').text(total === 1 ? '1 user' : `${total} users`);
+        $('#usersCountLabelInline').text(total === 1 ? '1 account' : `${total} accounts`);
         _renderSortIcons();
         _renderPagination(total);
 
@@ -434,22 +662,27 @@
             const countryCode = String(user['last_login_country_code'] || '').trim().toLowerCase();
             const flagIcon = countryCode ? `<img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${countryCode}.svg" alt="" class="flag-icon" loading="lazy" />` : '';
             const clientMeta = [
-                `<div class="text-muted">UID: <code>${uidValue}</code></div>`,
-                `<div class="text-muted">Last login: ${_escapeHtml(lastLoginAt)}</div>`,
-                `<div class="text-muted">IP: ${lastLoginIp}</div>`,
-                `<div class="text-muted">${flagIcon}${_escapeHtml(locationLabel)}</div>`,
+                `<div class="client-meta-line"><span class="client-meta-label">UID</span><span class="client-meta-value"><code>${uidValue}</code></span></div>`,
+                `<div class="client-meta-line"><span class="client-meta-label">Login</span><span class="client-meta-value">${_escapeHtml(lastLoginAt)}</span></div>`,
+                `<div class="client-meta-line"><span class="client-meta-label">IP</span><span class="client-meta-value">${lastLoginIp}</span></div>`,
+                `<div class="client-meta-line"><span class="client-meta-label">Loc</span><span class="client-meta-value">${flagIcon}${_escapeHtml(locationLabel)}</span></div>`,
             ].join('');
             const tr = $('<tr>');
-            tr.append(`<td><code>${username}</code></td>`);
-            tr.append(`<td>${badges}</td>`);
+            tr.append(
+                `<td><div class="user-name-block"><code class="user-name-code">${username}</code><div class="user-name-meta">ID ${_escapeHtml(String(user['id']))}</div></div></td>`
+            );
+            tr.append(`<td><div class="user-perms">${badges}</div></td>`);
             tr.append(`<td><div class="client-meta">${clientMeta}</div></td>`);
             tr.append(
                 '<td class="text-end">'
-                + '<div class="d-inline-flex gap-1">'
+                + '<div class="user-actions">'
                 + '<button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#editUserModal" data-bs-title="Modify user" data-bs-placement="top"'
                 + ' data-bs-id="' + user['id'] + '" data-bs-user="' + _escapeHtml(user['user']) + '"'
                 + ' data-bs-admin="' + user['admin_access'] + '" data-bs-shop="' + user['shop_access'] + '" data-bs-backup="' + user['backup_access'] + '">'
                 + '<i class="bi bi-pencil-square"></i></button>'
+                + '<button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#userHistoryModal" data-bs-title="View history" data-bs-placement="top"'
+                + ' data-bs-id="' + user['id'] + '" data-bs-user="' + _escapeHtml(user['user']) + '">'
+                + '<i class="bi bi-clock-history"></i></button>'
                 + '<button type="button" class="btn ' + (user['frozen'] ? 'btn-warning' : 'btn-outline-warning') + ' btn-sm" data-bs-toggle="modal" data-bs-target="#freezeUserModal" data-bs-title="Freeze account" data-bs-placement="top"'
                 + ' data-bs-id="' + user['id'] + '" data-bs-user="' + _escapeHtml(user['user']) + '" data-bs-frozen="' + (user['frozen'] ? 'true' : 'false') + '" data-bs-message="' + _escapeHtml(user['frozen_message'] || '') + '">'
                 + '<i class="bi bi-snow"></i></button>'
@@ -467,6 +700,7 @@
 
     function fillUserTable() {
         $('#usersCountLabel').text('Loading users...');
+        $('#usersCountLabelInline').text('Loading users...');
         $.getJSON("/api/users", function (result) {
             // Note: /api/users returns a list, not a success wrapper.
             allUsers = result || [];
@@ -479,6 +713,7 @@
     let freezeUserId = null;
     let freezeWasFrozen = false;
     const freezeUserModal = $('#freezeUserModal')
+    const userHistoryModal = $('#userHistoryModal')
 
     function _updateFreezeModalState() {
         const enabled = getCheckboxStatus('freezeEnabledCheck');
@@ -508,8 +743,27 @@
         })
     }
 
+    if (userHistoryModal) {
+        userHistoryModal.on('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            historyUserId = button.getAttribute('data-bs-id');
+            historyUserName = button.getAttribute('data-bs-user') || 'User';
+            $('#userHistoryModalLabel').text(`History for ${historyUserName}`);
+            loadUserHistory();
+        });
+        userHistoryModal.on('hidden.bs.modal', () => {
+            historyUserId = null;
+            historyUserName = '';
+            $('#userHistorySummaryText').text('Loading history...');
+            $('#userHistoryTableBody').html('<tr><td colspan="6" class="text-muted">Loading history...</td></tr>');
+        });
+    }
+
     $('#freezeEnabledCheck').on('change', function () {
         _updateFreezeModalState();
+    });
+    $('#userHistoryLimitSelect').on('change', function () {
+        loadUserHistory();
     });
 
     function submitFreezeUser() {

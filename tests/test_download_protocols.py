@@ -99,6 +99,7 @@ class DownloadProtocolTests(unittest.TestCase):
         self.assertIsInstance(normalized["age_minutes"], int)
         self.assertGreaterEqual(normalized["age_minutes"], 0)
         self.assertTrue(normalized["age_label"])
+        self.assertEqual(normalized["published_at"], "2026-03-14T14:00:00Z")
 
     def test_filter_results_applies_usenet_min_age(self):
         results = [

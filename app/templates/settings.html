@@ -2,12 +2,268 @@
 {% block content %}
 {% include 'nav.html' %}
 
-<div class="setting-body">
-    <div class="row g-0">
+<style>
+    :root {
+        --settings-accent: var(--bs-primary);
+        --settings-border: var(--bs-border-color);
+        --settings-muted: var(--bs-secondary-color);
+        --settings-surface-1: var(--bs-body-bg);
+        --settings-surface-2: var(--bs-tertiary-bg);
+        --settings-surface-3: var(--bs-secondary-bg);
+        --settings-nav-h: 56px;
+    }
+
+    .settings-body {
+        padding-left: 0;
+        padding-right: 0;
+        height: calc(100dvh - var(--settings-nav-h));
+        overflow: hidden;
+    }
+
+    .settings-shell-row {
+        height: 100%;
+        min-height: 0;
+    }
+
+    .settings-main-col {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .settings-main-inner {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        padding: 0.75rem 1rem 1rem;
+    }
+
+    .settings-scroll {
+        min-height: 0;
+        flex: 1 1 auto;
+        overflow-y: auto;
+        padding-right: 0.15rem;
+    }
+
+    .settings-page-header,
+    .settings-section-header {
+        border: 1px solid var(--settings-border);
+        border-radius: var(--aerofoil-card-radius);
+        background: var(--settings-surface-2);
+    }
+
+    .settings-page-header {
+        padding: 1rem 1.1rem;
+        box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.08);
+    }
+
+    .settings-section-header {
+        padding: 0.95rem 1.05rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 0.35rem 0.9rem rgba(0, 0, 0, 0.08);
+    }
+
+    .settings-page-subtitle,
+    .settings-section-subtitle,
+    .settings-nav-subtitle {
+        color: var(--settings-muted);
+    }
+
+    .settings-page-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    #settingsSidebar {
+        min-height: 100%;
+        height: 100%;
+        position: sticky;
+        top: var(--settings-nav-h);
+        overflow-y: auto;
+        background-color: rgba(26, 30, 34, 0.98) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+
+    #settingsSidebar .d-flex {
+        border-bottom-color: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    #settingsNav .nav-link {
+        color: rgba(255, 255, 255, 0.75);
+        padding: 0.8rem 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 0.25rem;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.7rem;
+    }
+
+    #settingsNav .nav-link:hover {
+        color: rgba(255, 255, 255, 0.95);
+        background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    #settingsNav .nav-link.active {
+        color: #fff;
+        background-color: rgba(13, 110, 253, 0.25);
+        font-weight: 500;
+    }
+
+    #settingsNav .nav-link svg {
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+        margin-right: 0.5rem;
+    }
+
+    .settings-nav-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        min-width: 0;
+    }
+
+    .settings-nav-title {
+        line-height: 1.2;
+    }
+
+    .settings-nav-subtitle {
+        font-size: 0.78rem;
+        line-height: 1.25;
+    }
+
+    .settings-panel {
+        margin-bottom: 1rem;
+    }
+
+    .settings-panel.activity-section {
+        padding: 0;
+    }
+
+    .settings-panel .card-body {
+        padding: 1.15rem 1.15rem 1.05rem;
+    }
+
+    .settings-panel-header {
+        margin-bottom: 1.2rem;
+    }
+
+    .settings-panel-header .card-title {
+        margin-bottom: 0.2rem;
+    }
+
+    .settings-panel-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .settings-flag-icon {
+        width: 16px;
+        height: 12px;
+        border-radius: 2px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+        flex-shrink: 0;
+    }
+
+    .country-list-disabled {
+        opacity: 0.55;
+        filter: grayscale(25%);
+    }
+
+    .settings-option-stack > * + * {
+        margin-top: 0.9rem;
+    }
+
+    .settings-downloads-tabs {
+        margin-bottom: 1rem;
+    }
+
+    .settings-downloads-tabs .nav-link.active {
+        background: var(--settings-surface-1);
+        border-color: var(--settings-border) var(--settings-border) var(--settings-surface-1);
+    }
+
+    @supports not (height: 100dvh) {
+        .settings-body {
+            height: calc(100vh - var(--settings-nav-h));
+        }
+    }
+
+    @media (min-width: 768px) {
+        html,
+        body {
+            overflow-y: hidden;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        html,
+        body {
+            overflow-y: auto;
+        }
+
+        .settings-body {
+            height: auto;
+            overflow: visible;
+        }
+
+        .settings-main-col {
+            height: auto;
+            overflow: visible;
+        }
+
+        .settings-main-inner {
+            height: auto;
+            overflow: visible;
+            padding: 0.75rem;
+        }
+
+        .settings-scroll {
+            overflow: visible;
+            padding-right: 0;
+        }
+
+        #settingsSidebar {
+            position: fixed;
+            top: var(--settings-nav-h);
+            left: -100%;
+            width: 280px;
+            height: calc(100vh - var(--settings-nav-h));
+            z-index: 1040;
+            transition: left 0.3s ease;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+        }
+
+        #settingsSidebar.show {
+            left: 0;
+        }
+
+        body.sidebar-open::before {
+            content: "";
+            position: fixed;
+            top: var(--settings-nav-h);
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1039;
+        }
+    }
+</style>
+
+<div class="container-fluid setting-body settings-body">
+    <div class="row g-0 settings-shell-row">
         <!-- Sidebar Navigation -->
-        <div class="col-md-3 col-lg-2 border-end" id="settingsSidebar">
+        <div class="col-md-3 col-xl-2" id="settingsSidebar">
             <div class="d-flex align-items-center justify-content-between p-3 border-bottom">
-                <h5 class="mb-0">Settings</h5>
+                <div>
+                    <h5 class="mb-0">Settings</h5>
+                    <div class="text-muted small">System configuration</div>
+                </div>
                 <button class="btn btn-sm d-md-none" type="button" id="sidebarToggle" aria-label="Toggle sidebar">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
                         <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
@@ -19,244 +275,321 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em; margin-right: 0.5rem;">
                         <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.81 8.985.936 8 1.783z"/>
                     </svg>
-                    Library
+                    <span class="settings-nav-copy">
+                        <span class="settings-nav-title">Library</span>
+                        <span class="settings-nav-subtitle">Paths, naming, maintenance, metadata</span>
+                    </span>
                 </a>
                 <a class="nav-link" href="#" data-section="shop">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em; margin-right: 0.5rem;">
                         <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z"/>
                     </svg>
-                    Shop
+                    <span class="settings-nav-copy">
+                        <span class="settings-nav-title">Shop</span>
+                        <span class="settings-nav-subtitle">Access, security, branding, client delivery</span>
+                    </span>
                 </a>
                 <a class="nav-link" href="#" data-section="downloads">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em; margin-right: 0.5rem;">
                         <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
                         <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
                     </svg>
-                    Downloads
+                    <span class="settings-nav-copy">
+                        <span class="settings-nav-title">Downloads</span>
+                        <span class="settings-nav-subtitle">Automation, providers, torrent and usenet clients</span>
+                    </span>
                 </a>
             </nav>
         </div>
         
         <!-- Main Content Area -->
-        <div class="col-md-9 col-lg-10">
-            <!-- Mobile menu button -->
-            <div class="d-md-none p-3 border-bottom">
-                <button class="btn btn-outline-secondary" type="button" id="sidebarToggleMobile" aria-label="Toggle sidebar">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em; margin-right: 0.5rem;">
-                        <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
-                    </svg>
-                    Menu
-                </button>
-            </div>
-            <div class="settings-container container-fluid mt-3">
-
-                <div class="d-flex justify-content-end">
-                    <div class="text-muted small">Version {{ app_version }}</div>
+        <div class="col-md-9 col-xl-10 settings-main-col">
+            <div class="settings-main-inner">
+                <div class="settings-page-header">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                        <div>
+                            <h2 class="mb-2">Settings</h2>
+                            <div class="settings-page-subtitle">Configure AeroFoil library behavior, shop access, and download automation from a single workspace.</div>
+                        </div>
+                        <div class="settings-page-meta">
+                            <button class="btn btn-outline-secondary d-md-none" type="button" id="sidebarToggleMobile" aria-label="Toggle sidebar">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em; margin-right: 0.4rem;">
+                                    <path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5zm0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5z"/>
+                                </svg>
+                                Sections
+                            </button>
+                            <span class="badge text-bg-secondary">Version {{ app_version }}</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- <h1>Settings</h1> -->
-
-                {% if admin_account_created == false %}
-                <div class="alert alert-danger" role="alert">
-                    <h4 class="alert-heading">Missing admin account!</h4>
-                    <p>AeroFoil requires an admin account to enable authentication. Until an account with admin rights is
-                        created, <strong>authentication is disabled, anyone can access and change the configuration of
-                            your shop!</strong>
-                        <br>
-                        Add an admin account <a href="/users" class="alert-link">on the Users page</a>.
-                    </p>
-                </div>
-                {% endif %}
-
-                {% if valid_keys == false %}
-                <div id="missingKeysAlert" class="alert alert-warning alert-dismissible fade show" role="alert">
-                    <h4 class="alert-heading">Missing console keys!</h4>
-                    Console keys are required to decrypt any console content, including
-                    backups. AeroFoil uses this to identify files, regardless of the filename.</br>
-                    <strong>Titles will be missed or misidentified if you don't fill in your keys!</strong>
-                    See <a target="_blank" href="https://gitlab.com/easyhacking/switch/-/wikis/home/getting-started/dump-keys" class="alert-link">this guide</a> on
-                    how to extract the
-                    keys from your console, and upload them <a href="/settings#consoleKeysInput" class="alert-link">here
-                        in AeroFoil.</a>
-                    <hr>
-                    If keys are missing, all files <strong>must follow the format "Title Name
-                        [TITLEID][vVERSION]"</strong>, else the file won't be recognized.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-                {% endif %}
-
-                <div id="missingShopHostAlert" class="alert alert-warning alert-dismissible fade show" role="alert" style="display: none;">
-                    <h4 class="alert-heading">Missing shop Host!</h4>
-                    Host verification from outside the local network is disabled if the shop <code>Host</code> is
-                    missing, configure it <a href="/settings#shopHostInput" class="alert-link">here
-                        in AeroFoil</a> to prevent someone else stealing from your shop.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-
-                <div id="missingShopHauthAlert" class="alert alert-warning alert-dismissible fade show" role="alert" style="display: none;">
-                    <h4 class="alert-heading">Missing shop Hauth!</h4>
-                    <a href="https://blawar.github.io/tinfoil/network/#host-signature" class="alert-link"
-                        target="_blank">Host signature</a> verification from outside the local network is disabled if
-                    the shop <code>Hauth</code> is missing. Connect to the shop from Tinfoil with an admin account to
-                    set it.
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-
+                <div class="settings-scroll">
                 <!-- Library Section -->
                 <div class="settings-section" id="section-library" data-section="library">
-                <h2 class="pb-3">Library</h2>
-
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="libraryAutoMaintenanceCheck" onChange="submitLibrarySettings()">
-                    <label class="form-check-label" for="libraryAutoMaintenanceCheck">Auto-maintain library</label>
-                    <div class="form-text">Runs library organization and removes empty folders on a schedule.</div>
-                </div>
-
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label for="libraryMaintenanceIntervalInput" class="form-label">Maintenance interval (minutes)</label>
-                        <input type="number" min="30" class="form-control" id="libraryMaintenanceIntervalInput" onChange="submitLibrarySettings()">
-                        <div class="form-text">Minimum 30 minutes. Values below 30 are clamped.</div>
-                    </div>
-                    <div class="col-md-5 d-flex align-items-end">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="libraryMaintenanceDeleteUpdatesCheck" onChange="submitLibrarySettings()">
-                            <label class="form-check-label" for="libraryMaintenanceDeleteUpdatesCheck">Delete older updates during maintenance</label>
-                        </div>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
+                <div class="settings-section-header">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
                         <div>
-                            <div class="form-text">Last maintenance run</div>
-                            <div id="libraryMaintenanceLastRun" class="small text-muted">Never</div>
+                            <h3 class="mb-1">Library</h3>
+                            <div class="settings-section-subtitle">Paths, naming, maintenance schedules, and title identification preferences.</div>
                         </div>
                     </div>
                 </div>
-
-                <div class="card mb-3" id="libraryConversionStagingStatusCard">
+                <div class="settings-panel activity-section aerofoil-card">
                     <div class="card-body">
-                        <div class="d-flex align-items-center justify-content-between mb-1">
-                            <div class="fw-semibold">Conversion staging</div>
-                            <span class="badge text-bg-secondary" id="libraryConversionStagingStatusBadge">Disabled</span>
-                        </div>
-                        <div class="small" id="libraryConversionStagingPathLabel">Not enabled</div>
-                        <div class="form-text" id="libraryConversionStagingHint">Set <code>AEROFOIL_CONVERSION_STAGING_ENABLED=true</code> to enable.</div>
-                    </div>
-                </div>
-
-                <div class="card mb-3">
-                    <div class="card-body">
-                        <div class="d-flex flex-wrap gap-2 align-items-end mb-3">
-                            <div class="flex-grow-1" style="min-width: 220px;">
-                                <label for="libraryNamingTemplateSelect" class="form-label mb-1">Organization naming template</label>
-                                <select id="libraryNamingTemplateSelect" class="form-select" onchange="onLibraryNamingTemplateChange()"></select>
-                            </div>
-                            <div>
-                                <button type="button" class="btn btn-outline-primary" onclick="addLibraryNamingTemplate()">Add template</button>
-                            </div>
-                            <div>
-                                <button type="button" class="btn btn-outline-danger" onclick="deleteLibraryNamingTemplate()">Delete template</button>
-                            </div>
+                        <div class="settings-panel-header">
+                            <h5 class="card-title">Library Paths</h5>
+                            <div class="text-muted small">Choose the directories AeroFoil scans and manages.</div>
                         </div>
 
-                        <div class="form-text mb-3">
-                            Tokens: <code>{title}</code>, <code>{title_id}</code>, <code>{app_id}</code>, <code>{version}</code>, <code>{version_txt}</code>, <code>{dlc_name}</code>, <code>{ext}</code> (<code>{version_txt}</code> applies to filename templates only)
-                        </div>
-
-                        <div class="d-flex flex-wrap gap-2 mb-3">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="applyLibraryNamingPreset('default')">Use Default Preset</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="applyLibraryNamingPreset('flat')">Use Flat Preset</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="applyLibraryNamingPreset('scene')">Use Scene Preset</button>
-                        </div>
-
-                        <div class="mb-3">
-                            <button
-                                class="btn btn-sm btn-success"
-                                type="button"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#collapseLibraryTemplateFields"
-                                aria-expanded="false"
-                                aria-controls="collapseLibraryTemplateFields">
-                                Show template fields
+                        <div class="fw-semibold mb-2">Configured paths</div>
+                        <div id="libraryPathHelp" class="form-text mb-2">Path of directory containing your games.</div>
+                        <table class="table table-hover caption-top mb-0" id="pathsTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Path</th>
+                                    <th scope="col">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                        <hr class="my-3">
+                        <div class="fw-semibold mb-2">Actions</div>
+                        <div class="settings-panel-actions">
+                            <button class="btn btn-primary" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapseNewPath" aria-expanded="false" aria-controls="collapseNewPath">
+                                Add library path
                             </button>
+                            <button type="button" class="btn btn-outline-primary scanBtn" onClick='scanLibrary()'>Scan library</button>
                         </div>
 
-                        <div class="collapse" id="collapseLibraryTemplateFields">
+                        <div class="collapse mt-3" id="collapseNewPath">
+                            <div class="border rounded p-3">
+                                <label class="form-label">Add a new directory</label>
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-lg-8">
+                                        <input type="text" class="form-control" id="libraryPathInput" placeholder="Path">
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" id="submitNewLibraryPathBtn" class="btn btn-primary"
+                                            onClick='submitNewLibraryPath()'>Submit</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-panel activity-section aerofoil-card">
+                    <div class="card-body">
+                        <div class="settings-panel-header">
+                            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                                <div>
+                                    <h5 class="card-title">Maintenance</h5>
+                                    <div class="text-muted small">Control automatic organization, cleanup, and conversion staging.</div>
+                                </div>
+                                <div class="form-check form-switch mb-0 mt-1">
+                                    <input class="form-check-input" type="checkbox" id="libraryAutoMaintenanceCheck" onChange="submitLibrarySettings()">
+                                    <label class="form-check-label" for="libraryAutoMaintenanceCheck">Auto-maintain library</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-text mb-3">Runs library organization and removes empty folders on a schedule.</div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-lg-7">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="fw-semibold mb-2">Schedule</div>
+                                    <div class="row g-3 align-items-end">
+                                        <div class="col-sm-7">
+                                            <label for="libraryMaintenanceIntervalInput" class="form-label">Maintenance interval (minutes)</label>
+                                            <input type="number" min="30" class="form-control" id="libraryMaintenanceIntervalInput" onChange="submitLibrarySettings()">
+                                            <div class="form-text">Minimum 30 minutes. Values below 30 are clamped.</div>
+                                        </div>
+                                        <div class="col-sm-5">
+                                            <div class="form-text">Last maintenance run</div>
+                                            <div id="libraryMaintenanceLastRun" class="small text-muted">Never</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-5">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="fw-semibold mb-2">Cleanup</div>
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" id="libraryMaintenanceDeleteUpdatesCheck" onChange="submitLibrarySettings()">
+                                        <label class="form-check-label" for="libraryMaintenanceDeleteUpdatesCheck">Delete older updates during maintenance</label>
+                                    </div>
+                                    <div class="form-text mb-0">Keeps the latest owned update per title when maintenance runs.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3" id="libraryConversionStagingStatusCard">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <div class="fw-semibold">Conversion staging</div>
+                                <span class="badge text-bg-secondary" id="libraryConversionStagingStatusBadge">Disabled</span>
+                            </div>
+                            <div class="small" id="libraryConversionStagingPathLabel">Not enabled</div>
+                            <div class="form-text mb-0" id="libraryConversionStagingHint">Set <code>AEROFOIL_CONVERSION_STAGING_ENABLED=true</code> to enable.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-panel activity-section aerofoil-card">
+                    <div class="card-body">
+                        <div class="settings-panel-header">
+                            <h5 class="card-title">Organization Naming</h5>
+                            <div class="text-muted small">Choose how identified content is organized into folders and filenames.</div>
+                        </div>
+
+                        <div class="border rounded p-3 mb-3">
+                            <div class="fw-semibold mb-2">Template selection</div>
+                            <div class="d-flex flex-wrap gap-2 align-items-end">
+                                <div class="flex-grow-1" style="min-width: 220px;">
+                                    <label for="libraryNamingTemplateSelect" class="form-label mb-1">Organization naming template</label>
+                                    <select id="libraryNamingTemplateSelect" class="form-select" onchange="onLibraryNamingTemplateChange()"></select>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-primary" onclick="addLibraryNamingTemplate()">Add template</button>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-outline-danger" onclick="deleteLibraryNamingTemplate()">Delete template</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3 mb-3">
+                            <div class="fw-semibold mb-2">Presets and tokens</div>
+                            <div class="form-text mb-3">
+                                Tokens: <code>{title}</code>, <code>{title_id}</code>, <code>{app_id}</code>, <code>{version}</code>, <code>{version_txt}</code>, <code>{dlc_name}</code>, <code>{ext}</code> (<code>{version_txt}</code> applies to filename templates only)
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="applyLibraryNamingPreset('default')">Use Default Preset</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="applyLibraryNamingPreset('flat')">Use Flat Preset</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="applyLibraryNamingPreset('scene')">Use Scene Preset</button>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                <div class="fw-semibold">Template fields</div>
+                                <button
+                                    class="btn btn-sm btn-success"
+                                    type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#collapseLibraryTemplateFields"
+                                    aria-expanded="false"
+                                    aria-controls="collapseLibraryTemplateFields">
+                                    Show template fields
+                                </button>
+                            </div>
+
+                            <div class="collapse" id="collapseLibraryTemplateFields">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateBaseFolderInput" class="form-label">Base folder template</label>
+                                        <input id="libraryTemplateBaseFolderInput" class="form-control" type="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateBaseFilenameInput" class="form-label">Base filename template</label>
+                                        <input id="libraryTemplateBaseFilenameInput" class="form-control" type="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateUpdateFolderInput" class="form-label">Update folder template</label>
+                                        <input id="libraryTemplateUpdateFolderInput" class="form-control" type="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateUpdateFilenameInput" class="form-label">Update filename template</label>
+                                        <input id="libraryTemplateUpdateFilenameInput" class="form-control" type="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateDlcFolderInput" class="form-label">DLC folder template</label>
+                                        <input id="libraryTemplateDlcFolderInput" class="form-control" type="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateDlcFilenameInput" class="form-label">DLC filename template</label>
+                                        <input id="libraryTemplateDlcFilenameInput" class="form-control" type="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateOtherFolderInput" class="form-label">Other folder template</label>
+                                        <input id="libraryTemplateOtherFolderInput" class="form-control" type="text">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="libraryTemplateOtherFilenameInput" class="form-label">Other filename template</label>
+                                        <input id="libraryTemplateOtherFilenameInput" class="form-control" type="text">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-panel activity-section aerofoil-card">
+                    <div class="card-body">
+                        <div class="settings-panel-header">
+                            <h5 class="card-title">Title Identification</h5>
+                            <div class="text-muted small">Metadata language, title resolution, and media cache controls.</div>
+                        </div>
+
+                        <div class="border rounded p-3 mb-3">
+                            <div class="fw-semibold mb-2">Metadata locale</div>
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label for="libraryTemplateBaseFolderInput" class="form-label">Base folder template</label>
-                                    <input id="libraryTemplateBaseFolderInput" class="form-control" type="text">
+                                    <label for="selectRegion" class="form-label">Library Region:</label>
+                                    <select id="selectRegion" class="form-select" aria-label="Select library region">
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label for="libraryTemplateBaseFilenameInput" class="form-label">Base filename template</label>
-                                    <input id="libraryTemplateBaseFilenameInput" class="form-control" type="text">
+                                    <label for="selectLanguage" class="form-label">Library Language:</label>
+                                    <select id="selectLanguage" class="form-select" aria-label="Select library language">
+                                    </select>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="libraryTemplateUpdateFolderInput" class="form-label">Update folder template</label>
-                                    <input id="libraryTemplateUpdateFolderInput" class="form-control" type="text">
+                                <div id="selectRegionLanguageHelp" class="form-text">Region and Language used to get games
+                                    informations.</div>
+                            </div>
+                        </div>
+
+                        <div class="border rounded p-3 mb-3">
+                            <div class="fw-semibold mb-2">Identification tools</div>
+                            <div>
+                                <label for="consoleKeysInput" class="form-label">Console keys:</label>
+                                <div class="d-flex flex-wrap align-items-end gap-2">
+                                    <div style="width: 100%; max-width: 420px;">
+                                        <input class="form-control" type="file"
+                                            accept=".keys,.txt" id="consoleKeysInput">
+                                    </div>
+                                    <button type="button" id="uploadConsoleKeysBtn" class="btn btn-outline-primary" onClick='uploadConsoleKeys()'>
+                                        Upload / Replace keys
+                                    </button>
+                                    <button type="button" id="deleteConsoleKeysBtn" class="btn btn-outline-danger" onClick='deleteConsoleKeys()' {% if valid_keys != true %}disabled{% endif %}>
+                                        Delete keys
+                                    </button>
+                                    <span id="consoleKeysActionStatus" class="btn btn-sm btn-outline-secondary disabled" role="status" aria-live="polite"></span>
                                 </div>
-                                <div class="col-md-6">
-                                    <label for="libraryTemplateUpdateFilenameInput" class="form-label">Update filename template</label>
-                                    <input id="libraryTemplateUpdateFilenameInput" class="form-control" type="text">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="libraryTemplateDlcFolderInput" class="form-label">DLC folder template</label>
-                                    <input id="libraryTemplateDlcFolderInput" class="form-control" type="text">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="libraryTemplateDlcFilenameInput" class="form-label">DLC filename template</label>
-                                    <input id="libraryTemplateDlcFilenameInput" class="form-control" type="text">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="libraryTemplateOtherFolderInput" class="form-label">Other folder template</label>
-                                    <input id="libraryTemplateOtherFolderInput" class="form-control" type="text">
-                                </div>
-                                <div class="col-md-6">
-                                    <label for="libraryTemplateOtherFilenameInput" class="form-label">Other filename template</label>
-                                    <input id="libraryTemplateOtherFilenameInput" class="form-control" type="text">
+                                <div id="consoleKeysHelp" class="form-text">Console keys are required to decrypt any console
+                                    content, including
+                                    backups. AeroFoil uses this to identify files, regardless of the filename.
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <label class="form-label">Library paths:</label>
-                <div id="libraryPathHelp" class="form-text">Path of directory containing your games.</div>
-                <table class="table table-hover caption-top" id="pathsTable">
-                    <thead>
-                        <tr>
-                            <th scope="col">Path</th>
-                            <th scope="col">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    </tbody>
-                </table>
-
-                <!-- Library buttons -->
-                <div class="row g-3">
-                    <div class="col-auto">
-                        <button class="btn btn-primary" type="button" data-bs-toggle="collapse"
-                            data-bs-target="#collapseNewPath" aria-expanded="false" aria-controls="collapseNewPath">
-                            Add library path
-                        </button>
-                    </div>
-
-                    <div class="col-auto">
-                        <button type="button" class="btn btn-primary mb-3 scanBtn" onClick='scanLibrary()'>Scan
-                            library</button>
-                    </div>
-                </div>
-
-                <div class="collapse" id="collapseNewPath">
-                    <div class="card card-body">
-                        <label class="form-label">Add a new directory:</label>
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <input type="text" class="form-control" id="libraryPathInput" placeholder="Path">
+                        <div class="border rounded p-3">
+                            <div class="fw-semibold mb-2">Media cache</div>
+                            <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                                <button type="button" id="refreshMediaCacheBtn" class="btn btn-outline-secondary"
+                                    onClick='refreshMediaCache()'>Refresh icons and banners</button>
+                                <button type="button" id="prefetchIconsBtn" class="btn btn-outline-secondary"
+                                    onClick='prefetchAllIcons()'>Prefetch all icons</button>
+                                <button type="button" id="prefetchBannersBtn" class="btn btn-outline-secondary"
+                                    onClick='prefetchAllBanners()'>Prefetch all banners</button>
+                                <span id="refreshMediaCacheStatus" class="text-muted small"></span>
                             </div>
-                            <div class="col-auto">
-                                <button type="button" id="submitNewLibraryPathBtn" class="btn btn-primary mb-3"
-                                    onClick='submitNewLibraryPath()'>Submit</button>
+
+                            <div>
+                                <button type="button" id="submitTitlesSettingsBtn" class="btn btn-primary"
+                                    onClick='submitTitlesSettings()'>Save title settings</button>
                             </div>
                         </div>
                     </div>
@@ -283,115 +616,119 @@
                     </div>
                 </div>
 
-                <hr class="my-4">
-
-                <h3 class="pb-3">Title Identification</h3>
-                <p class="text-muted">Titles identification configuration.</p>
-                <div class="row mb-3">
-                    <div class="col">
-                        <label for="selectRegion" class="form-label">Library Region:</label>
-                        <select id="selectRegion" class="form-select" aria-label="Select library region">
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label for="selectLanguage" class="form-label">Library Language:</label>
-                        <select id="selectLanguage" class="form-select" aria-label="Select library language">
-                        </select>
-                    </div>
-                    <div id="selectRegionLanguageHelp" class="form-text">Region and Language used to get games
-                        informations.</div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="consoleKeysInput" class="form-label">Console keys:</label>
-                    <div class="d-flex flex-wrap align-items-end gap-2">
-                        <div style="width: 100%; max-width: 420px;">
-                            <input class="form-control" type="file"
-                                accept=".keys,.txt" id="consoleKeysInput">
+                <div class="modal fade" id="settingsNoticeModal" tabindex="-1" aria-labelledby="settingsNoticeModalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h1 class="modal-title fs-5" id="settingsNoticeModalLabel">Settings notice</h1>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                    aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" id="settingsNoticeModalBody"></div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary d-none" id="settingsNoticeDismissForeverBtn">Do not show again</button>
+                                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                            </div>
                         </div>
-                        <button type="button" id="uploadConsoleKeysBtn" class="btn btn-outline-primary" onClick='uploadConsoleKeys()'>
-                            Upload / Replace keys
-                        </button>
-                        <button type="button" id="deleteConsoleKeysBtn" class="btn btn-outline-danger" onClick='deleteConsoleKeys()' {% if valid_keys != true %}disabled{% endif %}>
-                            Delete keys
-                        </button>
-                        <span id="consoleKeysActionStatus" class="btn btn-sm btn-outline-secondary disabled" role="status" aria-live="polite"></span>
-                    </div>
-                    <div id="consoleKeysHelp" class="form-text">Console keys are required to decrypt any console
-                        content, including
-                        backups. AeroFoil uses this to identify files, regardless of the filename.
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <button type="button" id="submitTitlesSettingsBtn" class="btn btn-primary"
-                        onClick='submitTitlesSettings()'>Save title settings</button>
-                </div>
-                <div class="mb-3 d-flex align-items-center gap-3">
-                    <button type="button" id="refreshMediaCacheBtn" class="btn btn-outline-secondary"
-                        onClick='refreshMediaCache()'>Refresh icons and banners</button>
-                    <button type="button" id="prefetchIconsBtn" class="btn btn-outline-secondary"
-                        onClick='prefetchAllIcons()'>Prefetch all icons</button>
-                    <button type="button" id="prefetchBannersBtn" class="btn btn-outline-secondary"
-                        onClick='prefetchAllBanners()'>Prefetch all banners</button>
-                    <span id="refreshMediaCacheStatus" class="text-muted small"></span>
-                </div>
                 </form>
                 </div>
 
                 <!-- Shop Section -->
                 <div class="settings-section d-none" id="section-shop" data-section="shop">
-                <h2 class="pb-3">Shop</h2>
-                <!-- Shop URL -->
-                <div class="mb-3">
-                    <label for="shopHostInput" class="form-label">Shop URL:</label>
-                    <input class="form-control" id="shopHostInput" aria-describedby="shopHostHelp"
-                        placeholder="shop.domain.tld">
-                    <div id="shopHostHelp" class="form-text">Configure your shop URL to enable host verification.<br>
-                        Host verification from Tinfoil requests will be enforced if the shop is accessed securely (with
-                        <code>https</code>), make sure your reverse proxy <strong>does NOT</strong> allow insecure
-                        connections (or upgrades them to use SSL) and correctly sets the <code>X-Forwarded-Proto</code>
-                        header.
+                <div class="settings-section-header">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                        <div>
+                            <h3 class="mb-1">Shop</h3>
+                            <div class="settings-section-subtitle">Connectivity, access rules, security controls, and client-facing branding.</div>
+                        </div>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label for="shopHauthInput" class="form-label">Shop Hauth:</label>
-                    <input class="form-control" id="shopHauthInput" aria-describedby="shopHauthHelp"
-                        placeholder="Hauth value">
-                    <div id="shopHauthHelp" class="form-text">Override the host signature (Hauth) used for Tinfoil verification.</div>
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="publicShopCheck"
-                        aria-describedby="publicShopCheckHelp">
-                    <label class="form-check-label" for="publicShopCheck">Public shop</label>
-                    <div id="publicShopCheckHelp" class="form-text">If enabled, Shop access from Tinfoil does not
-                        require authentication.
-                    </div>
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="externalTinfoilOnlyCheck"
-                        aria-describedby="externalTinfoilOnlyCheckHelp">
-                    <label class="form-check-label" for="externalTinfoilOnlyCheck">External access: Tinfoil/CyberFoil only</label>
-                    <div id="externalTinfoilOnlyCheckHelp" class="form-text">If enabled, requests from external/public IP addresses are allowed only for Tinfoil/CyberFoil shop clients (detected by the Tinfoil header set and/or matching <code>User-Agent</code>). Private/local network access is unchanged.</div>
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="encryptShopCheck"
-                        aria-describedby="encryptShopCheckHelp">
-                    <label class="form-check-label" for="encryptShopCheck">Encrypt shop</label>
-                    <div id="encryptShopCheckHelp" class="form-text">Serve encrypted and compressed shop, so that only Tinfoil clients
-                        can access the content. <strong>Strongly suggested to enable it for security</strong>.</div>
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="fastTransferModeCheck"
-                        aria-describedby="fastTransferModeCheckHelp">
-                    <label class="form-check-label" for="fastTransferModeCheck">Fast transfer mode</label>
-                    <div id="fastTransferModeCheckHelp" class="form-text">
-                        Prioritize throughput by skipping per-chunk transfer tracking. Activity live byte counters and exact transfer byte accounting may be less precise.
-                    </div>
-                </div>
-                <div class="card mb-3">
+                <div class="settings-panel activity-section aerofoil-card">
                     <div class="card-body">
-                        <h6 class="card-title mb-3">Login Protection</h6>
+                        <div class="settings-panel-header">
+                            <h5 class="card-title">Connectivity</h5>
+                            <div class="text-muted small">Core values used for shop routing and Tinfoil host verification.</div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-lg-7">
+                                <label for="shopHostInput" class="form-label">Shop URL:</label>
+                                <input class="form-control" id="shopHostInput" aria-describedby="shopHostHelp"
+                                    placeholder="shop.domain.tld">
+                                <div id="shopHostHelp" class="form-text">Configure your shop URL to enable host verification.<br>
+                                    Host verification from Tinfoil requests will be enforced if the shop is accessed securely (with
+                                    <code>https</code>), make sure your reverse proxy <strong>does NOT</strong> allow insecure
+                                    connections (or upgrades them to use SSL) and correctly sets the <code>X-Forwarded-Proto</code>
+                                    header.
+                                </div>
+                            </div>
+                            <div class="col-lg-5">
+                                <label for="shopHauthInput" class="form-label">Shop Hauth:</label>
+                                <input class="form-control" id="shopHauthInput" aria-describedby="shopHauthHelp"
+                                    placeholder="Hauth value">
+                                <div id="shopHauthHelp" class="form-text">Override the host signature (Hauth) used for Tinfoil verification.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-panel activity-section aerofoil-card">
+                    <div class="card-body">
+                        <div class="settings-panel-header">
+                            <h5 class="card-title">Access And Delivery</h5>
+                            <div class="text-muted small">How clients reach the shop and how the content is served.</div>
+                        </div>
+
+                        <div class="settings-option-stack">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="publicShopCheck"
+                                    aria-describedby="publicShopCheckHelp">
+                                <label class="form-check-label" for="publicShopCheck">Public shop</label>
+                                <div id="publicShopCheckHelp" class="form-text">If enabled, Shop access from Tinfoil does not
+                                    require authentication.
+                                </div>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="externalTinfoilOnlyCheck"
+                                    aria-describedby="externalTinfoilOnlyCheckHelp">
+                                <label class="form-check-label" for="externalTinfoilOnlyCheck">External access: Tinfoil/CyberFoil only</label>
+                                <div id="externalTinfoilOnlyCheckHelp" class="form-text">If enabled, requests from external/public IP addresses are allowed only for Tinfoil/CyberFoil shop clients (detected by the Tinfoil header set and/or matching <code>User-Agent</code>). Private/local network access is unchanged.</div>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="encryptShopCheck"
+                                    aria-describedby="encryptShopCheckHelp">
+                                <label class="form-check-label" for="encryptShopCheck">Encrypt shop</label>
+                                <div id="encryptShopCheckHelp" class="form-text">Serve encrypted and compressed shop, so that only Tinfoil clients
+                                    can access the content. <strong>Strongly suggested to enable it for security</strong>.</div>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="tinfoilOnlyModeCheck"
+                                    aria-describedby="tinfoilOnlyModeCheckHelp">
+                                <label class="form-check-label" for="tinfoilOnlyModeCheck">Tinfoil Only mode</label>
+                                <div id="tinfoilOnlyModeCheckHelp" class="form-text">Only serve the Tinfoil shop payload from the shop root instead of the web library view. This automatically enables shop encryption.</div>
+                            </div>
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="fastTransferModeCheck"
+                                    aria-describedby="fastTransferModeCheckHelp">
+                                <label class="form-check-label" for="fastTransferModeCheck">Fast transfer mode</label>
+                                <div id="fastTransferModeCheckHelp" class="form-text">
+                                    Prioritize throughput by skipping per-chunk transfer tracking. Activity live byte counters and exact transfer byte accounting may be less precise.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-panel activity-section aerofoil-card">
+                    <div class="card-body">
+                        <div class="settings-panel-header">
+                            <h5 class="card-title">Login Protection</h5>
+                            <div class="text-muted small">Authentication controls for the web UI and remote shop access.</div>
+                        </div>
                         <div class="form-check form-switch mb-3">
                             <input type="checkbox" class="form-check-input" id="authIpLockoutEnabledCheck">
                             <label class="form-check-label" for="authIpLockoutEnabledCheck">Enable failed-login IP lockout</label>
@@ -411,66 +748,115 @@
                             </div>
                         </div>
                         <div>
-                            <label for="authPermanentIpBlacklistInput" class="form-label">Permanent IP blacklist</label>
-                            <textarea class="form-control font-monospace" id="authPermanentIpBlacklistInput" rows="4"
-                                placeholder="203.0.113.4&#10;198.51.100.0/24"></textarea>
+                            <label for="authPermanentIpBlacklistEntryInput" class="form-label">Permanent IP blacklist</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" class="form-control font-monospace" id="authPermanentIpBlacklistEntryInput"
+                                    autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="addPermanentIpBlacklistEntryBtn">Add</button>
+                                <button type="button" class="btn btn-outline-secondary" id="clearPermanentIpBlacklistBtn">Clear all</button>
+                            </div>
+                            <div id="authPermanentIpBlacklistError" class="form-text text-danger d-none"></div>
+                            <div id="authPermanentIpBlacklistList" class="d-flex flex-wrap gap-2 mb-2"></div>
+                            <textarea class="form-control font-monospace" id="authPermanentIpBlacklistBulkInput" rows="3"></textarea>
+                            <div class="mt-2 d-flex gap-2">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="addPermanentIpBlacklistBulkBtn">Add all from text</button>
+                            </div>
+                            <textarea class="d-none" id="authPermanentIpBlacklistInput" aria-hidden="true"></textarea>
                             <div class="form-text">One IP or CIDR per line. Blacklisted clients cannot authenticate.</div>
                         </div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label for="shopPublicKeyInput" class="form-label mb-0">Public Key:</label>
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#shopPublicKeyCollapse" aria-expanded="false" aria-controls="shopPublicKeyCollapse">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em;">
-                                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
-                                </svg>
-                                Show
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="copyPublicKeyBtn" onclick="copyPublicKey()">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em;">
-                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
-                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
-                                </svg>
-                                Copy
-                            </button>
+                        <div class="mt-3" id="authBlockedCountrySection">
+                            <label for="authBlockedCountryCodeInput" class="form-label">Blocked countries</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" class="form-control font-monospace text-uppercase" id="authBlockedCountryCodeInput"
+                                    maxlength="2" autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="addBlockedCountryCodeBtn">Add</button>
+                            </div>
+                            <div id="authBlockedCountryCodesList" class="d-flex flex-wrap gap-2 mb-2"></div>
+                            <textarea class="d-none" id="authBlockedCountryCodesInput" aria-hidden="true"></textarea>
+                            <div id="authBlockedCountryDisabledHint" class="form-text d-none"></div>
+                        </div>
+                        <div class="mt-3" id="authAllowedCountrySection">
+                            <label for="authAllowedCountryCodeInput" class="form-label">Allowed countries (whitelist)</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" class="form-control font-monospace text-uppercase" id="authAllowedCountryCodeInput"
+                                    maxlength="2" autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="addAllowedCountryCodeBtn">Add</button>
+                            </div>
+                            <div id="authAllowedCountryCodesList" class="d-flex flex-wrap gap-2 mb-2"></div>
+                            <textarea class="d-none" id="authAllowedCountryCodesInput" aria-hidden="true"></textarea>
+                            <div id="authAllowedCountryDisabledHint" class="form-text d-none"></div>
                         </div>
                     </div>
-                    <div class="collapse" id="shopPublicKeyCollapse">
-                        <textarea class="form-control font-monospace" id="shopPublicKeyInput" rows="7"
-                            aria-describedby="shopPublicKeyHelp" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
+                </div>
+
+                <div class="settings-panel activity-section aerofoil-card">
+                    <div class="card-body">
+                        <div class="settings-panel-header">
+                            <h5 class="card-title">Keys And Branding</h5>
+                            <div class="text-muted small">Encryption material and the message shown to clients after loading the shop.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label for="shopPublicKeyInput" class="form-label mb-0">Public Key:</label>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#shopPublicKeyCollapse" aria-expanded="false" aria-controls="shopPublicKeyCollapse">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em;">
+                                            <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                                        </svg>
+                                        Show
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="copyPublicKeyBtn" onclick="copyPublicKey()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em;">
+                                            <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                            <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                                        </svg>
+                                        Copy
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="collapse" id="shopPublicKeyCollapse">
+                                <textarea class="form-control font-monospace" id="shopPublicKeyInput" rows="7"
+                                    aria-describedby="shopPublicKeyHelp" placeholder="-----BEGIN PUBLIC KEY-----"></textarea>
+                            </div>
+                            <div id="shopPublicKeyHelp" class="form-text">Public key used to encrypt the shop payload for Tinfoil clients.
+                                Changing this will break encrypted shop access unless clients have the matching private key.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="motdTextArea" class="form-label">Message of the day:</label>
+                            <textarea class="form-control" id="motdTextArea" rows="3"></textarea>
+                            <div id="motdTextAreaHelp" class="form-text">Message presented when opening Tinfoil after
+                                successfully loading your shop.</div>
+                        </div>
+
+                        <div>
+                            <button type="button" id="submitShopSettingsBtn" class="btn btn-primary"
+                                onClick='submitShopSettings()'>Save shop settings</button>
+                        </div>
                     </div>
-                    <div id="shopPublicKeyHelp" class="form-text">Public key used to encrypt the shop payload for Tinfoil clients.
-                        Changing this will break encrypted shop access unless clients have the matching private key.</div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="motdTextArea" class="form-label">Message of the day:</label>
-                    <textarea class="form-control" id="motdTextArea" rows="3"></textarea>
-                    <div id="motdTextAreaHelp" class="form-text">Message presented when opening Tinfoil after
-                        successfully loading your shop.</div>
-                </div>
-
-                <div class="mb-3">
-                    <button type="button" id="submitShopSettingsBtn" class="btn btn-primary"
-                        onClick='submitShopSettings()'>Submit</button>
                 </div>
                 </div>
 
                 <!-- Downloads Section -->
                 <div class="settings-section d-none" id="section-downloads" data-section="downloads">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h2 class="mb-0">Downloads</h2>
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" id="downloadsEnabledCheck">
-                        <label class="form-check-label" for="downloadsEnabledCheck">Enable automatic downloads</label>
+                <div class="settings-section-header">
+                    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+                        <div>
+                            <h3 class="mb-1">Downloads</h3>
+                            <div class="settings-section-subtitle">Automation cadence, search tuning, and torrent or usenet client integration.</div>
+                        </div>
+                        <div class="form-check form-switch mt-1">
+                            <input type="checkbox" class="form-check-input" id="downloadsEnabledCheck">
+                            <label class="form-check-label" for="downloadsEnabledCheck">Enable automatic downloads</label>
+                        </div>
                     </div>
                 </div>
+                <div class="settings-panel activity-section aerofoil-card">
+                    <div class="card-body">
 
                 <!-- Tab navigation -->
-                <ul class="nav nav-tabs mb-3" id="downloadsTabs" role="tablist">
+                <ul class="nav nav-tabs settings-downloads-tabs" id="downloadsTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab" aria-controls="general" aria-selected="true">General</button>
                     </li>
@@ -645,7 +1031,9 @@
                         onClick='submitDownloadSettings()'>Save Settings</button>
                 </div>
                 </div>
+                </div>
 
+            </div>
             </div>
         </div>
     </div>
@@ -654,7 +1042,8 @@
 <script>
 
     settings_map = {
-        'library/path': 'libraryPathInput'
+        'library/path': 'libraryPathInput',
+        'shop/public_key': 'shopPublicKeyInput'
     };
 
 
@@ -736,6 +1125,210 @@
         templates: { default: JSON.parse(JSON.stringify(DEFAULT_LIBRARY_NAMING_TEMPLATE)) }
     };
     let consoleKeysLoaded = false;
+    let settingsNoticeModal = null;
+    let settingsNoticeQueue = [];
+    let activeSettingsNoticeKey = null;
+    let permanentIpBlacklistState = [];
+    let blockedCountryCodesState = [];
+    let allowedCountryCodesState = [];
+    const SETTINGS_NOTICE_SUPPRESS_KEY = 'aerofoil.settings.notice.suppressed';
+
+    const initialSettingsFlags = {
+        adminAccountCreated: {{ 'true' if admin_account_created else 'false' }},
+    };
+
+    const SETTINGS_NOTICE_CONTENT = {
+        missingAdminAccount: {
+            title: 'Missing admin account',
+            variant: 'danger',
+            bodyHtml: `
+                <p>AeroFoil requires an admin account to enable authentication.</p>
+                <p><strong>Until an account with admin rights is created, authentication is disabled and anyone can access and change your shop configuration.</strong></p>
+                <p class="mb-0">Add an admin account from the Users page.</p>
+            `
+        },
+        missingConsoleKeys: {
+            title: 'Missing console keys',
+            variant: 'warning',
+            bodyHtml: `
+                <p>Console keys are required to decrypt console content, including backups. AeroFoil uses them to identify files regardless of filename.</p>
+                <p><strong>Titles will be missed or misidentified if you do not load your keys.</strong></p>
+                <p>See <a target="_blank" rel="noopener noreferrer" href="https://gitlab.com/easyhacking/switch/-/wikis/home/getting-started/dump-keys">this guide</a> to extract keys from your console, then upload them in Settings -> Library -> Title Identification.</p>
+                <p class="mb-0">If keys are missing, files must follow the format <code>Title Name [TITLEID][vVERSION]</code> or they will not be recognized.</p>
+            `
+        },
+        missingShopHost: {
+            title: 'Missing shop Host',
+            variant: 'warning',
+            bodyHtml: `
+                <p>Host verification from outside the local network is disabled while the shop <code>Host</code> value is empty.</p>
+                <p class="mb-0">Set it in Settings -> Shop -> Connectivity to prevent someone else stealing from your shop.</p>
+            `
+        },
+        missingShopHauth: {
+            title: 'Missing shop Hauth',
+            variant: 'warning',
+            suppressible: true,
+            bodyHtml: `
+                <p><a target="_blank" rel="noopener noreferrer" href="https://blawar.github.io/tinfoil/network/#host-signature">Host signature</a> verification from outside the local network is disabled while the shop <code>Hauth</code> value is missing.</p>
+                <p class="mb-0">Connect to the shop from Tinfoil with an admin account to set it.</p>
+            `
+        }
+    };
+
+    function getSuppressedSettingsNotices() {
+        try {
+            const raw = localStorage.getItem(SETTINGS_NOTICE_SUPPRESS_KEY);
+            if (!raw) {
+                return {};
+            }
+            const parsed = JSON.parse(raw);
+            return (parsed && typeof parsed === 'object') ? parsed : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function isSettingsNoticeSuppressed(noticeKey) {
+        const map = getSuppressedSettingsNotices();
+        return !!map[noticeKey];
+    }
+
+    function suppressSettingsNotice(noticeKey) {
+        if (!noticeKey) {
+            return;
+        }
+        const map = getSuppressedSettingsNotices();
+        map[noticeKey] = true;
+        try {
+            localStorage.setItem(SETTINGS_NOTICE_SUPPRESS_KEY, JSON.stringify(map));
+        } catch (_) {}
+    }
+
+    function getSettingsNoticeModal() {
+        if (!settingsNoticeModal) {
+            const modalEl = document.getElementById('settingsNoticeModal');
+            settingsNoticeModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalEl.addEventListener('hidden.bs.modal', function () {
+                activeSettingsNoticeKey = null;
+                showNextSettingsNotice();
+            });
+            const dismissBtn = document.getElementById('settingsNoticeDismissForeverBtn');
+            if (dismissBtn) {
+                dismissBtn.addEventListener('click', function () {
+                    if (!activeSettingsNoticeKey) {
+                        return;
+                    }
+                    suppressSettingsNotice(activeSettingsNoticeKey);
+                    clearSettingsNotice(activeSettingsNoticeKey);
+                });
+            }
+        }
+        return settingsNoticeModal;
+    }
+
+    function clearSettingsNotice(noticeKey) {
+        settingsNoticeQueue = settingsNoticeQueue.filter(function (queuedKey) {
+            return queuedKey !== noticeKey;
+        });
+
+        if (activeSettingsNoticeKey === noticeKey) {
+            getSettingsNoticeModal().hide();
+        }
+    }
+
+    function queueSettingsNotice(noticeKey) {
+        if (!SETTINGS_NOTICE_CONTENT[noticeKey]) {
+            return;
+        }
+        if (isSettingsNoticeSuppressed(noticeKey)) {
+            return;
+        }
+        if (activeSettingsNoticeKey === noticeKey || settingsNoticeQueue.includes(noticeKey)) {
+            return;
+        }
+        settingsNoticeQueue.push(noticeKey);
+        showNextSettingsNotice();
+    }
+
+    function showNextSettingsNotice() {
+        if (activeSettingsNoticeKey || !settingsNoticeQueue.length) {
+            return;
+        }
+
+        const noticeKey = settingsNoticeQueue.shift();
+        const notice = SETTINGS_NOTICE_CONTENT[noticeKey];
+        if (!notice) {
+            return;
+        }
+
+        activeSettingsNoticeKey = noticeKey;
+        const modalEl = $('#settingsNoticeModal');
+        modalEl.find('.modal-title').text(notice.title);
+        modalEl.find('#settingsNoticeModalBody').html(notice.bodyHtml);
+        modalEl.find('#settingsNoticeDismissForeverBtn').toggleClass('d-none', !notice.suppressible);
+
+        const header = modalEl.find('.modal-header');
+        header.removeClass('bg-danger-subtle border-danger-subtle bg-warning-subtle border-warning-subtle');
+        if (notice.variant === 'danger') {
+            header.addClass('bg-danger-subtle border-danger-subtle');
+        } else {
+            header.addClass('bg-warning-subtle border-warning-subtle');
+        }
+
+        getSettingsNoticeModal().show();
+    }
+
+    function syncShopSecurityNotices(shopSettings) {
+        const host = String(shopSettings?.host || '').trim();
+        const hasHauth = typeof shopSettings?.hauth === 'boolean'
+            ? shopSettings.hauth
+            : !!String(shopSettings?.hauth_value || shopSettings?.hauth || '').trim();
+
+        clearSettingsNotice('missingShopHost');
+        clearSettingsNotice('missingShopHauth');
+
+        if (!host) {
+            queueSettingsNotice('missingShopHost');
+        } else if (!hasHauth) {
+            queueSettingsNotice('missingShopHauth');
+        }
+    }
+
+    function syncTinfoilOnlyModeControls() {
+        const tinfoilOnlyMode = getCheckboxStatus("tinfoilOnlyModeCheck");
+        $("#encryptShopCheck").prop("checked", tinfoilOnlyMode || getCheckboxStatus("encryptShopCheck"));
+        $("#encryptShopCheck").prop("disabled", tinfoilOnlyMode);
+    }
+
+    function clearSettingsErrors() {
+        Object.values(settings_map).forEach(function (formId) {
+            const form = $('#' + formId);
+            form.removeClass('is-invalid');
+            const formTextElement = form.attr('aria-describedby');
+            if (formTextElement) {
+                $("#" + formTextElement).removeClass('invalid-feedback');
+            }
+        });
+    }
+
+    function renderSettingsErrors(errors) {
+        (errors || []).forEach(function (error) {
+            const path = error['path'];
+            const formId = settings_map[path];
+            if (!formId) {
+                return;
+            }
+            const form = $('#' + formId);
+            form.addClass('is-invalid');
+            const formTextElement = form.attr('aria-describedby');
+            if (!formTextElement) {
+                return;
+            }
+            $("#" + formTextElement).addClass('invalid-feedback');
+            $("#" + formTextElement).text(error['error']);
+        });
+    }
 
     function normalizeLibraryNamingTemplates(raw) {
         const fallback = {
@@ -1040,12 +1633,12 @@
         consoleKeysLoaded = !!loaded;
         const statusEl = $('#consoleKeysActionStatus');
         if (loaded) {
-            $('#missingKeysAlert').addClass('d-none');
+            clearSettingsNotice('missingConsoleKeys');
             $('#deleteConsoleKeysBtn').prop('disabled', false);
             statusEl.removeClass('btn-outline-secondary btn-danger').addClass('btn-success').text('Keys loaded');
         } else {
             $('#deleteConsoleKeysBtn').prop('disabled', true);
-            $('#missingKeysAlert').removeClass('d-none');
+            queueSettingsNotice('missingConsoleKeys');
             statusEl.removeClass('btn-outline-secondary btn-success').addClass('btn-danger').text('No keys loaded');
         }
     }
@@ -1225,6 +1818,7 @@
 
     function submitShopSettings() {
         $('#submitShopSettingsBtn').prop('disabled', true);
+        clearSettingsErrors();
         const threshold = parsePositiveInt(getInputVal("authIpLockoutThresholdInput"), 5);
         const windowSeconds = parsePositiveInt(getInputVal("authIpLockoutWindowInput"), 600);
         const durationSeconds = parsePositiveInt(getInputVal("authIpLockoutDurationInput"), 1800);
@@ -1234,12 +1828,15 @@
             public: getCheckboxStatus("publicShopCheck"),
             external_tinfoil_only: getCheckboxStatus("externalTinfoilOnlyCheck"),
             encrypt: getCheckboxStatus("encryptShopCheck"),
+            tinfoil_only_mode: getCheckboxStatus("tinfoilOnlyModeCheck"),
             fast_transfer_mode: getCheckboxStatus("fastTransferModeCheck"),
             auth_ip_lockout_enabled: getCheckboxStatus("authIpLockoutEnabledCheck"),
             auth_ip_lockout_threshold: threshold,
             auth_ip_lockout_window_seconds: windowSeconds,
             auth_ip_lockout_duration_seconds: durationSeconds,
-            auth_permanent_ip_blacklist: parseIpEntryList(getInputVal("authPermanentIpBlacklistInput")),
+            auth_permanent_ip_blacklist: (permanentIpBlacklistState || []).slice(),
+            auth_blocked_country_codes: (blockedCountryCodesState || []).slice(),
+            auth_allowed_country_codes: (allowedCountryCodesState || []).slice(),
             public_key: getInputVal("shopPublicKeyInput"),
             motd: $('#motdTextArea').val(),
         }
@@ -1251,17 +1848,19 @@
             contentType: "application/json",
             success: function (result) {
                 if (!result['success']) {
-                    console.log('Not Success!');
-                    result['errors'].forEach(error => {
-                        path = error['path'];
-                        formId = settings_map[path];
-                        form = $('#' + formId);
-                        form.addClass('is-invalid');
-                        formTextElement = form.attr('aria-describedby');
-                        $("#" + formTextElement).addClass('invalid-feedback');
-                        $("#" + formTextElement).text(error['error']);
+                    renderSettingsErrors(result['errors']);
+                } else {
+                    syncShopSecurityNotices({
+                        host: data['host'],
+                        hauth: !!String(data['hauth'] || '').trim(),
+                        hauth_value: data['hauth']
                     });
                 }
+                $('#submitShopSettingsBtn').prop('disabled', false);
+            },
+            error: function (xhr) {
+                const result = xhr && xhr.responseJSON ? xhr.responseJSON : {};
+                renderSettingsErrors(result['errors']);
                 $('#submitShopSettingsBtn').prop('disabled', false);
             }
         });
@@ -1303,11 +1902,382 @@
         return out;
     }
 
+    function normalizeIpv4Address(value) {
+        const parts = String(value || '').trim().split('.');
+        if (parts.length !== 4) {
+            return '';
+        }
+        const out = [];
+        for (const part of parts) {
+            if (!/^\d{1,3}$/.test(part)) {
+                return '';
+            }
+            const n = Number(part);
+            if (!Number.isInteger(n) || n < 0 || n > 255) {
+                return '';
+            }
+            out.push(String(n));
+        }
+        return out.join('.');
+    }
+
+    function isValidIpv6Address(value) {
+        const text = String(value || '').trim().toLowerCase();
+        if (!text || text.indexOf(':') < 0 || /[^0-9a-f:.]/.test(text) || text.includes(':::')) {
+            return false;
+        }
+        const doubleCount = (text.match(/::/g) || []).length;
+        if (doubleCount > 1) {
+            return false;
+        }
+        const parts = text.split(':');
+        for (let i = 0; i < parts.length; i += 1) {
+            const part = parts[i];
+            if (!part) {
+                continue;
+            }
+            if (part.includes('.')) {
+                if (i !== parts.length - 1 || !normalizeIpv4Address(part)) {
+                    return false;
+                }
+                continue;
+            }
+            if (!/^[0-9a-f]{1,4}$/.test(part)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function normalizeIpEntryToken(value) {
+        const raw = String(value || '').trim();
+        if (!raw) {
+            return { ok: false, token: '', error: 'Enter an IP or CIDR value.' };
+        }
+        const slash = raw.indexOf('/');
+        let address = raw;
+        let prefix = null;
+        if (slash >= 0) {
+            address = raw.slice(0, slash).trim();
+            const prefixRaw = raw.slice(slash + 1).trim();
+            if (!/^\d+$/.test(prefixRaw)) {
+                return { ok: false, token: '', error: `Invalid CIDR prefix in "${raw}".` };
+            }
+            prefix = Number(prefixRaw);
+        }
+        const normalizedV4 = normalizeIpv4Address(address);
+        const isV6 = !normalizedV4 && isValidIpv6Address(address);
+        if (!normalizedV4 && !isV6) {
+            return { ok: false, token: '', error: `Invalid IP format: "${raw}".` };
+        }
+        if (prefix !== null) {
+            const maxPrefix = normalizedV4 ? 32 : 128;
+            if (!Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) {
+                return { ok: false, token: '', error: `Invalid CIDR range in "${raw}".` };
+            }
+        }
+        const normalizedAddress = normalizedV4 || String(address || '').trim().toLowerCase();
+        const normalizedToken = prefix === null ? normalizedAddress : `${normalizedAddress}/${prefix}`;
+        return { ok: true, token: normalizedToken, error: '' };
+    }
+
+    function setPermanentIpBlacklistError(message) {
+        const el = $('#authPermanentIpBlacklistError');
+        if (message) {
+            el.text(message).removeClass('d-none');
+        } else {
+            el.text('').addClass('d-none');
+        }
+    }
+
+    function renderPermanentIpBlacklistEntries() {
+        const container = $('#authPermanentIpBlacklistList');
+        container.empty();
+        if (!Array.isArray(permanentIpBlacklistState) || !permanentIpBlacklistState.length) {
+            container.append('<span class="text-muted small">No permanent IP blocks configured.</span>');
+            setInputVal('authPermanentIpBlacklistInput', '');
+            return;
+        }
+        permanentIpBlacklistState.forEach(token => {
+            const chip = $(`
+                <span class="badge text-bg-danger d-inline-flex align-items-center gap-2">
+                    <span class="font-monospace">${token}</span>
+                    <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remove ${token}"></button>
+                </span>
+            `);
+            chip.find('button').on('click', function () {
+                permanentIpBlacklistState = permanentIpBlacklistState.filter(item => item !== token);
+                renderPermanentIpBlacklistEntries();
+            });
+            container.append(chip);
+        });
+        setInputVal('authPermanentIpBlacklistInput', permanentIpBlacklistState.join('\n'));
+    }
+
+    function setPermanentIpBlacklistEntries(entries) {
+        const seen = new Set();
+        const out = [];
+        (Array.isArray(entries) ? entries : []).forEach(raw => {
+            const normalized = normalizeIpEntryToken(raw);
+            if (!normalized.ok) {
+                return;
+            }
+            const key = normalized.token.toLowerCase();
+            if (seen.has(key)) {
+                return;
+            }
+            seen.add(key);
+            out.push(normalized.token);
+        });
+        permanentIpBlacklistState = out;
+        renderPermanentIpBlacklistEntries();
+        setPermanentIpBlacklistError('');
+    }
+
+    function addPermanentIpBlacklistEntry(value) {
+        const normalized = normalizeIpEntryToken(value);
+        if (!normalized.ok) {
+            setPermanentIpBlacklistError(normalized.error);
+            return false;
+        }
+        const exists = permanentIpBlacklistState.some(item => item.toLowerCase() === normalized.token.toLowerCase());
+        if (exists) {
+            setPermanentIpBlacklistError('Entry already exists.');
+            return false;
+        }
+        permanentIpBlacklistState.push(normalized.token);
+        setPermanentIpBlacklistError('');
+        renderPermanentIpBlacklistEntries();
+        return true;
+    }
+
+    function addPermanentIpBlacklistEntryFromInput() {
+        const input = $('#authPermanentIpBlacklistEntryInput');
+        const value = String(input.val() || '');
+        const ok = addPermanentIpBlacklistEntry(value);
+        if (ok) {
+            input.val('');
+        }
+    }
+
+    function addPermanentIpBlacklistEntriesFromBulk() {
+        const bulk = String(getInputVal('authPermanentIpBlacklistBulkInput') || '');
+        const parts = bulk.replaceAll('\r', '\n').replaceAll(',', '\n').split('\n');
+        let added = 0;
+        let firstError = '';
+        parts.forEach(raw => {
+            const token = String(raw || '').trim();
+            if (!token) {
+                return;
+            }
+            const before = permanentIpBlacklistState.length;
+            const ok = addPermanentIpBlacklistEntry(token);
+            if (ok && permanentIpBlacklistState.length > before) {
+                added += 1;
+            } else if (!ok && !firstError) {
+                firstError = $('#authPermanentIpBlacklistError').text();
+            }
+        });
+        if (added > 0) {
+            setInputVal('authPermanentIpBlacklistBulkInput', '');
+            setPermanentIpBlacklistError('');
+        } else if (firstError) {
+            setPermanentIpBlacklistError(firstError);
+        }
+    }
+
+    function parseCountryCodeList(value) {
+        if (!value) {
+            return [];
+        }
+        const seen = new Set();
+        const out = [];
+        String(value).replaceAll('\r', '\n').replaceAll(',', '\n').split('\n').forEach(raw => {
+            const token = String(raw || '').trim().toUpperCase();
+            if (!/^[A-Z]{2}$/.test(token)) {
+                return;
+            }
+            if (seen.has(token)) {
+                return;
+            }
+            seen.add(token);
+            out.push(token);
+        });
+        return out;
+    }
+
+    function normalizeCountryCodeToken(value) {
+        const token = String(value || '').trim().toUpperCase();
+        if (!/^[A-Z]{2}$/.test(token)) {
+            return '';
+        }
+        return token;
+    }
+
+    function setCountryListUiState(sectionId, inputId, buttonId, hintId, disabled, hintText) {
+        const section = $(sectionId);
+        const input = $(inputId);
+        const button = $(buttonId);
+        const hint = $(hintId);
+        section.toggleClass('country-list-disabled', !!disabled);
+        input.prop('disabled', !!disabled);
+        button.prop('disabled', !!disabled);
+        if (disabled && hintText) {
+            hint.text(hintText).removeClass('d-none');
+        } else {
+            hint.text('').addClass('d-none');
+        }
+    }
+
+    function syncCountryListMode() {
+        const hasBlocked = Array.isArray(blockedCountryCodesState) && blockedCountryCodesState.length > 0;
+        const hasAllowed = Array.isArray(allowedCountryCodesState) && allowedCountryCodesState.length > 0;
+        const disableBlocked = hasAllowed && !hasBlocked;
+        const disableAllowed = hasBlocked && !hasAllowed;
+
+        setCountryListUiState(
+            '#authBlockedCountrySection',
+            '#authBlockedCountryCodeInput',
+            '#addBlockedCountryCodeBtn',
+            '#authBlockedCountryDisabledHint',
+            disableBlocked,
+            'Blocked list is disabled while whitelist has entries.'
+        );
+        setCountryListUiState(
+            '#authAllowedCountrySection',
+            '#authAllowedCountryCodeInput',
+            '#addAllowedCountryCodeBtn',
+            '#authAllowedCountryDisabledHint',
+            disableAllowed,
+            'Whitelist is disabled while blocked list has entries.'
+        );
+    }
+
+    function renderBlockedCountryCodes() {
+        const container = $('#authBlockedCountryCodesList');
+        container.empty();
+        if (!Array.isArray(blockedCountryCodesState) || !blockedCountryCodesState.length) {
+            container.append('<span class="text-muted small">No blocked countries configured.</span>');
+            syncCountryListMode();
+            return;
+        }
+
+        blockedCountryCodesState.forEach(code => {
+            const lower = code.toLowerCase();
+            const chip = $(`
+                <span class="badge text-bg-secondary d-inline-flex align-items-center gap-2">
+                    <img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${lower}.svg" alt="" class="settings-flag-icon" loading="lazy" />
+                    <span class="font-monospace">${code}</span>
+                    <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remove ${code}"></button>
+                </span>
+            `);
+            chip.find('button').on('click', function () {
+                blockedCountryCodesState = blockedCountryCodesState.filter(item => item !== code);
+                setInputVal('authBlockedCountryCodesInput', blockedCountryCodesState.join('\n'));
+                renderBlockedCountryCodes();
+            });
+            container.append(chip);
+        });
+        syncCountryListMode();
+    }
+
+    function setBlockedCountryCodes(codes) {
+        blockedCountryCodesState = parseCountryCodeList(
+            Array.isArray(codes) ? codes.join('\n') : String(codes || '')
+        );
+        setInputVal('authBlockedCountryCodesInput', blockedCountryCodesState.join('\n'));
+        renderBlockedCountryCodes();
+    }
+
+    function addBlockedCountryCodeFromInput() {
+        const input = $('#authBlockedCountryCodeInput');
+        if (input.prop('disabled')) {
+            return;
+        }
+        const code = normalizeCountryCodeToken(input.val());
+        input.val('');
+        if (!code) {
+            return;
+        }
+        if (blockedCountryCodesState.includes(code)) {
+            return;
+        }
+        blockedCountryCodesState.push(code);
+        blockedCountryCodesState.sort();
+        setInputVal('authBlockedCountryCodesInput', blockedCountryCodesState.join('\n'));
+        renderBlockedCountryCodes();
+    }
+
+    function renderAllowedCountryCodes() {
+        const container = $('#authAllowedCountryCodesList');
+        container.empty();
+        if (!Array.isArray(allowedCountryCodesState) || !allowedCountryCodesState.length) {
+            container.append('<span class="text-muted small">No whitelist countries configured.</span>');
+            syncCountryListMode();
+            return;
+        }
+
+        allowedCountryCodesState.forEach(code => {
+            const lower = code.toLowerCase();
+            const chip = $(`
+                <span class="badge text-bg-success d-inline-flex align-items-center gap-2">
+                    <img src="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/flags/4x3/${lower}.svg" alt="" class="settings-flag-icon" loading="lazy" />
+                    <span class="font-monospace">${code}</span>
+                    <button type="button" class="btn-close btn-close-white btn-sm" aria-label="Remove ${code}"></button>
+                </span>
+            `);
+            chip.find('button').on('click', function () {
+                allowedCountryCodesState = allowedCountryCodesState.filter(item => item !== code);
+                setInputVal('authAllowedCountryCodesInput', allowedCountryCodesState.join('\n'));
+                renderAllowedCountryCodes();
+            });
+            container.append(chip);
+        });
+        syncCountryListMode();
+    }
+
+    function setAllowedCountryCodes(codes) {
+        allowedCountryCodesState = parseCountryCodeList(
+            Array.isArray(codes) ? codes.join('\n') : String(codes || '')
+        );
+        setInputVal('authAllowedCountryCodesInput', allowedCountryCodesState.join('\n'));
+        renderAllowedCountryCodes();
+    }
+
+    function addAllowedCountryCodeFromInput() {
+        const input = $('#authAllowedCountryCodeInput');
+        if (input.prop('disabled')) {
+            return;
+        }
+        const code = normalizeCountryCodeToken(input.val());
+        input.val('');
+        if (!code) {
+            return;
+        }
+        if (allowedCountryCodesState.includes(code)) {
+            return;
+        }
+        allowedCountryCodesState.push(code);
+        allowedCountryCodesState.sort();
+        setInputVal('authAllowedCountryCodesInput', allowedCountryCodesState.join('\n'));
+        renderAllowedCountryCodes();
+    }
+
     function formatIpEntryList(entries) {
         if (!Array.isArray(entries)) {
             return '';
         }
         return entries.map(item => String(item || '').trim()).filter(Boolean).join('\n');
+    }
+
+    function formatCountryCodeList(entries) {
+        if (!Array.isArray(entries)) {
+            return '';
+        }
+        return entries
+            .map(item => String(item || '').trim().toUpperCase())
+            .filter(item => /^[A-Z]{2}$/.test(item))
+            .join('\n');
     }
 
     function parseSearchCharReplacements(value) {
@@ -1707,9 +2677,17 @@
     $(document).ready(function () {
         // Initialize settings navigation
         handleHashNavigation();
+        getSettingsNoticeModal();
+        renderPermanentIpBlacklistEntries();
+        renderBlockedCountryCodes();
+        renderAllowedCountryCodes();
+        if (!initialSettingsFlags.adminAccountCreated) {
+            queueSettingsNotice('missingAdminAccount');
+        }
         
         fillLibraryTable();
         $("#torrentClientTypeSelect").on("change", updateTorrentClientFieldState);
+        $("#tinfoilOnlyModeCheck").on("change", syncTinfoilOnlyModeControls);
         $('#libraryTemplateBaseFolderInput, #libraryTemplateBaseFilenameInput, #libraryTemplateUpdateFolderInput, #libraryTemplateUpdateFilenameInput, #libraryTemplateDlcFolderInput, #libraryTemplateDlcFilenameInput, #libraryTemplateOtherFolderInput, #libraryTemplateOtherFilenameInput')
             .on('change', function () { submitLibrarySettings(); });
 
@@ -1723,6 +2701,43 @@
         $('#shopPublicKeyCollapse').on('hide.bs.collapse', function () {
             const btn = $(this).closest('.mb-3').find('[data-bs-toggle="collapse"]');
             btn.html('<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="vertical-align: -0.125em;"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg> Show');
+        });
+        $('#addPermanentIpBlacklistEntryBtn').on('click', function () {
+            addPermanentIpBlacklistEntryFromInput();
+        });
+        $('#clearPermanentIpBlacklistBtn').on('click', function () {
+            permanentIpBlacklistState = [];
+            setInputVal('authPermanentIpBlacklistBulkInput', '');
+            setPermanentIpBlacklistError('');
+            renderPermanentIpBlacklistEntries();
+        });
+        $('#addPermanentIpBlacklistBulkBtn').on('click', function () {
+            addPermanentIpBlacklistEntriesFromBulk();
+        });
+        $('#authPermanentIpBlacklistEntryInput').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addPermanentIpBlacklistEntryFromInput();
+            }
+        });
+
+        $('#addBlockedCountryCodeBtn').on('click', function () {
+            addBlockedCountryCodeFromInput();
+        });
+        $('#authBlockedCountryCodeInput').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addBlockedCountryCodeFromInput();
+            }
+        });
+        $('#addAllowedCountryCodeBtn').on('click', function () {
+            addAllowedCountryCodeFromInput();
+        });
+        $('#authAllowedCountryCodeInput').on('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addAllowedCountryCodeFromInput();
+            }
         });
 
         $.getJSON("/api/settings", function (result) {
@@ -1776,20 +2791,19 @@
             $("#publicShopCheck").prop("checked", shopSettings['public']);
             $("#externalTinfoilOnlyCheck").prop("checked", !!shopSettings['external_tinfoil_only']);
             $("#encryptShopCheck").prop("checked", shopSettings['encrypt']);
+            $("#tinfoilOnlyModeCheck").prop("checked", !!shopSettings['tinfoil_only_mode']);
             $("#fastTransferModeCheck").prop("checked", !!shopSettings['fast_transfer_mode']);
+            syncTinfoilOnlyModeControls();
             setInputVal("shopPublicKeyInput", shopSettings['public_key'] || '');
             securitySettings = result['security'] || {};
             $("#authIpLockoutEnabledCheck").prop("checked", securitySettings['auth_ip_lockout_enabled'] !== false);
             setInputVal("authIpLockoutThresholdInput", securitySettings['auth_ip_lockout_threshold'] || 5);
             setInputVal("authIpLockoutWindowInput", securitySettings['auth_ip_lockout_window_seconds'] || 600);
             setInputVal("authIpLockoutDurationInput", securitySettings['auth_ip_lockout_duration_seconds'] || 1800);
-            setInputVal("authPermanentIpBlacklistInput", formatIpEntryList(securitySettings['auth_permanent_ip_blacklist'] || []));
-            if (!shopSettings['host']) {
-                $("#missingShopHostAlert").css('display', '');
-            } else if (!shopSettings['hauth']) {
-                $("#missingShopHauthAlert").css('display', '');
-            }
-
+            setPermanentIpBlacklistEntries(securitySettings['auth_permanent_ip_blacklist'] || []);
+            setBlockedCountryCodes(securitySettings['auth_blocked_country_codes'] || []);
+            setAllowedCountryCodes(securitySettings['auth_allowed_country_codes'] || []);
+            syncShopSecurityNotices(shopSettings);
             // Downloads settings
             downloadsSettings = result['downloads'] || {};
             setInputVal("downloadsIntervalInput", downloadsSettings['interval_minutes']);
