@@ -161,33 +161,43 @@
   }
 
   function buildRequestDownloadSearchRow(item) {
-    const cells = [
-      `<td>${escapeHtml(item.title || '-')}</td>`,
-      `<td>${escapeHtml(item.indexer || '-')}</td>`,
-    ];
+    const tr = document.createElement('tr');
+
+    function appendCell(text, title = '') {
+      const td = document.createElement('td');
+      td.textContent = text;
+      if (title) {
+        td.title = title;
+      }
+      tr.appendChild(td);
+      return td;
+    }
+
+    appendCell(item.title || '-');
+    appendCell(item.indexer || '-');
     if (downloadUiVisibility.show_protocol_column) {
-      cells.push(`<td>${escapeHtml(getProtocolLabel(item.protocol))}</td>`);
+      appendCell(getProtocolLabel(item.protocol));
     }
     if (downloadUiVisibility.show_usenet_columns) {
       const ageTooltip = formatPublishedAtTooltip(item.published_at);
-      const tooltipAttr = ageTooltip ? ` title="${escapeHtml(ageTooltip)}"` : '';
-      cells.push(`<td${tooltipAttr}>${escapeHtml(item.age_label || '-')}</td>`);
+      appendCell(item.age_label || '-', ageTooltip);
     }
-    cells.push(`<td>${formatBytes(item.size)}</td>`);
+    appendCell(formatBytes(item.size));
     if (downloadUiVisibility.show_torrent_columns) {
-      cells.push(
-        `<td>${escapeHtml(String(item.seeders ?? '-'))}</td>`,
-        `<td>${escapeHtml(String(item.leechers ?? '-'))}</td>`
-      );
+      appendCell(String(item.seeders ?? '-'));
+      appendCell(String(item.leechers ?? '-'));
     }
-    cells.push(`
-      <td>
-        <button class="btn btn-sm btn-warning queue-download-btn" data-download-url="${escapeHtml(item.download_url || '')}" data-title="${escapeHtml(item.title || '')}" data-protocol="${escapeHtml(item.protocol || '')}">
-          Queue
-        </button>
-      </td>
-    `);
-    return cells.join('');
+    const actionCell = document.createElement('td');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn btn-sm btn-warning queue-download-btn';
+    button.textContent = 'Queue';
+    button.dataset.downloadUrl = String(item.download_url || '');
+    button.dataset.title = String(item.title || '');
+    button.dataset.protocol = String(item.protocol || '');
+    actionCell.appendChild(button);
+    tr.appendChild(actionCell);
+    return tr;
   }
 
   let selectedTitle = null;
@@ -368,9 +378,7 @@
     }
     statusEl.textContent = `Found ${results.length} results.`;
     results.forEach(item => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = buildRequestDownloadSearchRow(item);
-      bodyEl.appendChild(tr);
+      bodyEl.appendChild(buildRequestDownloadSearchRow(item));
     });
   }
 
@@ -410,9 +418,9 @@
     if (!isAdmin) return;
     const btn = e.target.closest('.queue-download-btn');
     if (!btn) return;
-    const downloadUrl = btn.getAttribute('data-download-url');
-    const title = btn.getAttribute('data-title');
-    const protocol = btn.getAttribute('data-protocol');
+    const downloadUrl = btn.dataset.downloadUrl || '';
+    const title = btn.dataset.title || '';
+    const protocol = btn.dataset.protocol || '';
     if (!downloadUrl) return;
     btn.setAttribute('disabled', 'true');
     try {
