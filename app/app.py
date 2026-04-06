@@ -24,7 +24,7 @@ from datetime import timedelta, datetime
 flask.cli.show_server_banner = lambda *args: None
 from app.constants import *
 from app.settings import *
-from app.downloads import ProwlarrClient, filter_results, test_download_client, run_downloads_job, manual_search_update, queue_download_url, search_update_options, check_completed_downloads, get_downloads_state, get_active_downloads, get_download_ui_visibility, filter_download_search_results, remove_pending_download
+from app.downloads import ProwlarrClient, filter_results, test_download_client, run_downloads_job, manual_search_update, queue_download_url, search_update_options, check_completed_downloads, get_downloads_state, get_active_downloads, get_download_ui_visibility, filter_download_search_results, sort_download_search_results, remove_pending_download
 from app.library import organize_library, delete_older_updates, delete_duplicates, delete_library_content, delete_orphaned_addons
 from app.db import *
 from app.shop import *
@@ -3458,6 +3458,7 @@ def _get_prowlarr_search_limit(prowlarr_cfg):
 
 
 def _trim_download_search_results(results, limit=50):
+    ordered_results = sort_download_search_results(results)
     return [
         {
             'title': r.get('title'),
@@ -3471,7 +3472,7 @@ def _trim_download_search_results(results, limit=50):
             'age_label': r.get('age_label'),
             'published_at': r.get('published_at'),
         }
-        for r in (results or [])[:limit]
+        for r in ordered_results[:limit]
     ]
 
 

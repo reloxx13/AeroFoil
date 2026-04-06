@@ -135,6 +135,25 @@ def filter_download_search_results(results, downloads, blacklist_terms=None):
     return filtered
 
 
+def _download_result_age_sort_key(item):
+    try:
+        age_minutes = int(item.get("age_minutes"))
+    except (TypeError, ValueError, AttributeError):
+        return (1, float("inf"))
+    return (0, max(age_minutes, 0))
+
+
+def sort_download_search_results(results):
+    return sorted(
+        results or [],
+        key=lambda item: (
+            _download_result_age_sort_key(item),
+            str(item.get("indexer") or "").strip().lower(),
+            str(item.get("title") or "").strip().lower(),
+        ),
+    )
+
+
 def get_download_ui_visibility(downloads):
     return {
         "show_protocol_column": True,
@@ -743,7 +762,7 @@ def search_update_options(title_id, version, limit=20):
             "age_label": r.get("age_label"),
             "published_at": r.get("published_at"),
         }
-        for r in (results or [])[:limit]
+        for r in sort_download_search_results(results)[:limit]
     ]
     return True, None, trimmed
 

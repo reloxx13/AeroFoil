@@ -26,6 +26,7 @@ from app.downloads.manager import (
     queue_download_url,
     remove_pending_download,
     search_update_options,
+    sort_download_search_results,
 )
 from app.downloads.prowlarr import _normalize_result
 from app.downloads.usenet_client import add_nzb, list_active, list_completed, remove_history, remove_queue_item
@@ -53,6 +54,29 @@ class ProwlarrProtocolTests(unittest.TestCase):
             "downloadUrl": "https://indexer.example/file.nzb",
         })
         self.assertEqual(result["protocol"], "usenet")
+
+    def test_sort_download_search_results_orders_by_age_across_indexers(self):
+        ordered = sort_download_search_results([
+            {"title": "Example Old", "indexer": "Indexer B", "age_minutes": 21 * 24 * 60},
+            {"title": "Example New", "indexer": "Indexer A", "age_minutes": 2 * 24 * 60},
+            {"title": "Example Mid", "indexer": "Indexer C", "age_minutes": 7 * 24 * 60},
+        ])
+
+        self.assertEqual(
+            [item["title"] for item in ordered],
+            ["Example New", "Example Mid", "Example Old"],
+        )
+
+    def test_sort_download_search_results_places_missing_age_last(self):
+        ordered = sort_download_search_results([
+            {"title": "Example Unknown", "indexer": "Indexer A", "age_minutes": None},
+            {"title": "Example Recent", "indexer": "Indexer B", "age_minutes": 60},
+        ])
+
+        self.assertEqual(
+            [item["title"] for item in ordered],
+            ["Example Recent", "Example Unknown"],
+        )
 
 
 class QueueRoutingTests(unittest.TestCase):
@@ -268,6 +292,61 @@ class QueueRoutingTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIsNone(message)
         self.assertEqual([item["protocol"] for item in results], ["usenet"])
+
+    @patch("app.downloads.manager.pick_best_result")
+    @patch("app.downloads.manager.ProwlarrClient")
+    @patch("app.downloads.manager.titles_lib.get_game_info", return_value={"name": "Example Title"})
+    @patch("app.downloads.manager.titles_lib.release_titledb")
+    @patch("app.downloads.manager.titles_lib.load_titledb")
+    @patch("app.downloads.manager.load_settings")
+    def test_search_update_options_sorts_results_by_age_across_indexers(
+        self,
+        load_settings_mock,
+        load_titledb_mock,
+        release_titledb_mock,
+        get_game_info_mock,
+        prowlarr_client_mock,
+        pick_best_result_mock,
+    ):
+        load_settings_mock.return_value = {
+            "downloads": {
+                "prowlarr": {
+                    "url": "http://prowlarr.local",
+                    "api_key": "secret",
+                },
+                "usenet_client": {
+                    "type": "sabnzbd",
+                    "url": "http://sab.local",
+                    "api_key": "secret",
+                    "category": "aerofoil",
+                },
+            }
+        }
+        prowlarr_client_mock.return_value.search.return_value = [
+            {
+                "title": "Example Old",
+                "protocol": "usenet",
+                "download_url": "https://indexer-b.example/file.nzb",
+                "indexer": "Indexer B",
+                "age_minutes": 20 * 24 * 60,
+                "age_label": "20 d",
+            },
+            {
+                "title": "Example New",
+                "protocol": "usenet",
+                "download_url": "https://indexer-a.example/file.nzb",
+                "indexer": "Indexer A",
+                "age_minutes": 2 * 24 * 60,
+                "age_label": "2 d",
+            },
+        ]
+        pick_best_result_mock.side_effect = lambda items, **kwargs: items[0]
+
+        ok, message, results = search_update_options("0100000000010000", 123, limit=20)
+
+        self.assertTrue(ok)
+        self.assertIsNone(message)
+        self.assertEqual([item["title"] for item in results], ["Example New", "Example Old"])
 
     @patch("app.downloads.manager.queue_download")
     @patch("app.downloads.manager.pick_best_result")
