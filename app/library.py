@@ -2065,7 +2065,7 @@ def _resolve_delete_targets(scope, title_id=None, app_id=None, app_type=None, ve
 
     raise ValueError(f'Unsupported delete scope: {scope}')
 
-def _delete_target_apps(target_apps, dry_run=False, verbose=False, detail_limit=200):
+def _delete_target_apps(target_apps, dry_run=False, verbose=False, detail_limit=200, include_skip_details=True, count_skips=True):
     results = _new_delete_results()
     detail_count = 0
 
@@ -2088,8 +2088,10 @@ def _delete_target_apps(target_apps, dry_run=False, verbose=False, detail_limit=
         app_label = f"{app.app_type} {app.app_id} v{app.app_version}"
         app_files_list = [file_entry for file_entry in list(app.files or []) if file_entry]
         if not app_files_list:
-            results['skipped'] += 1
-            add_detail(f"Skip {app_label}: no linked files.")
+            if count_skips:
+                results['skipped'] += 1
+            if include_skip_details:
+                add_detail(f"Skip {app_label}: no linked files.")
             continue
 
         for file_entry in app_files_list:
@@ -2106,8 +2108,10 @@ def _delete_target_apps(target_apps, dry_run=False, verbose=False, detail_limit=
                     f"{linked.app_type} {linked.app_id} v{linked.app_version}"
                     for linked in foreign_apps
                 )
-                results['skipped'] += 1
-                add_detail(f"Skip shared file {filepath}: linked to non-target apps {foreign_labels}.")
+                if count_skips:
+                    results['skipped'] += 1
+                if include_skip_details:
+                    add_detail(f"Skip shared file {filepath}: linked to non-target apps {foreign_labels}.")
                 continue
 
             candidate_filepaths.append(filepath)
@@ -2182,12 +2186,15 @@ def delete_orphaned_addons(dry_run=False, verbose=False, detail_limit=200):
         )
         .all()
     )
-    return _delete_target_apps(
+    results = _delete_target_apps(
         target_apps,
         dry_run=dry_run,
         verbose=verbose,
-        detail_limit=detail_limit
+        detail_limit=detail_limit,
+        include_skip_details=False,
+        count_skips=False,
     )
+    return results
 
 def delete_older_updates(dry_run=False, verbose=False, detail_limit=200):
     results = _new_delete_results()
@@ -2207,8 +2214,6 @@ def delete_older_updates(dry_run=False, verbose=False, detail_limit=200):
             owned=True
         ).all()
         if len(update_apps) <= 1:
-            results['skipped'] += 1
-            add_detail(f"Skip updates for {title.title_id}: {len(update_apps)} owned update(s).")
             continue
 
         latest_app = max(update_apps, key=lambda app: _safe_int(app.app_version))
@@ -2221,6 +2226,8 @@ def delete_older_updates(dry_run=False, verbose=False, detail_limit=200):
                 dry_run=dry_run,
                 verbose=verbose,
                 detail_limit=remaining_detail_limit,
+                include_skip_details=False,
+                count_skips=False,
             )
             _merge_delete_results(results, partial_results, add_detail=add_detail)
 
@@ -2258,8 +2265,6 @@ def delete_duplicates(dry_run=False, verbose=False, detail_limit=200):
     for app in apps:
         app_files_list = [f for f in list(app.files or []) if f and f.filepath]
         if len(app_files_list) <= 1:
-            results['skipped'] += 1
-            add_detail(f"Skip {app.app_id} v{app.app_version}: {len(app_files_list)} file(s).")
             continue
 
         ordered = sorted(app_files_list, key=file_rank, reverse=True)
@@ -2278,8 +2283,6 @@ def delete_duplicates(dry_run=False, verbose=False, detail_limit=200):
             except Exception:
                 linked_apps_count = 0
             if linked_apps_count > 1:
-                results['skipped'] += 1
-                add_detail(f"Skip shared file {dup_filepath}: linked to {linked_apps_count} app records.")
                 continue
 
             if dry_run:

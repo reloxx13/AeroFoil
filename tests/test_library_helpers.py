@@ -34,6 +34,7 @@ try:
         _pending_cleanup_roots,
         _pending_organize_paths,
         _sanitize_component,
+        delete_duplicates,
         delete_older_updates,
         delete_library_content,
         delete_orphaned_addons,
@@ -54,6 +55,13 @@ class LibraryHelperTests(unittest.TestCase):
     class _InvertibleExpr:
         def __invert__(self):
             return self
+
+    class _AdminUser:
+        is_authenticated = True
+
+        @staticmethod
+        def has_access(access):
+            return access == "admin"
 
     @staticmethod
     def _make_app(app_pk, app_id, app_type, version):
@@ -329,63 +337,59 @@ class LibraryHelperTests(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertTrue(any("Unsupported delete scope" in err for err in result["errors"]))
 
-    @patch("app.library._delete_target_apps", return_value={"success": True, "deleted": 2, "skipped": 0, "mutated": False, "errors": [], "details": []})
-    def test_delete_orphaned_addons_uses_targeted_delete_helper(self, delete_targets_mock):
-        with flask_app.app_context():
-            with patch("app.library.Apps.query") as apps_query_mock, patch("app.library.db.session.query") as session_query_mock:
-                session_query_mock.return_value.filter.return_value.exists.return_value = self._InvertibleExpr()
-                apps_query_mock.join.return_value.filter.return_value.all.return_value = ["orphan-app"]
+    def test_manage_delete_updates_api_does_not_report_skipped_items(self):
+        fake_user = self._AdminUser()
 
-                result = delete_orphaned_addons(dry_run=True, verbose=True)
+        with flask_app.test_request_context("/api/manage/delete-updates", method="POST", json={"dry_run": True, "verbose": True}):
+            with (
+                patch("app.auth.admin_account_created", return_value=True),
+                patch("app.auth.current_user", fake_user),
+                patch("app.app.delete_older_updates", return_value={"success": True, "deleted": 3, "skipped": 0, "details": ["Deleted: X:\\library\\old-update.nsp."], "errors": []}),
+            ):
+                from app.app import manage_delete_updates
+                response = manage_delete_updates()
 
-        self.assertTrue(result["success"])
-        delete_targets_mock.assert_called_once_with(
-            ["orphan-app"],
-            dry_run=True,
-            verbose=True,
-            detail_limit=200,
-        )
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["deleted"], 3)
+        self.assertEqual(payload["skipped"], 0)
+        self.assertEqual(payload["details"], ["Deleted: X:\\library\\old-update.nsp."])
 
-    @patch("app.library._delete_target_apps")
-    def test_delete_older_updates_skips_shared_base_xci(self, delete_targets_mock):
-        title = SimpleNamespace(id=1, title_id="01005270232F2000")
-        older_update = self._make_app(10, "01005270232F2800", "UPDATE", 1)
-        latest_update = self._make_app(11, "01005270232F2800", "UPDATE", 2)
-        base_app = self._make_app(12, "01005270232F2000", "BASE", 0)
-        shared_file = self._make_file(
-            201,
-            "X:\\library\\Example Title [01005270232F2000] [BASE][v0].xci",
-            [older_update, base_app],
-        )
-        older_update.files = [shared_file]
-        delete_targets_mock.return_value = {
-            "success": True,
-            "deleted": 0,
-            "skipped": 1,
-            "mutated": False,
-            "errors": [],
-            "details": [
-                "Skip shared file X:\\library\\Example Title [01005270232F2000] [BASE][v0].xci: linked to non-target apps BASE 01005270232F2000 v0."
-            ],
-        }
+    def test_manage_delete_duplicates_api_does_not_report_skipped_items(self):
+        fake_user = self._AdminUser()
 
-        with flask_app.app_context():
-            with patch("app.library.Titles.query") as titles_query_mock, patch("app.library.Apps.query") as apps_query_mock:
-                titles_query_mock.all.return_value = [title]
-                apps_query_mock.filter_by.return_value.all.return_value = [older_update, latest_update]
+        with flask_app.test_request_context("/api/manage/delete-duplicates", method="POST", json={"dry_run": True, "verbose": True}):
+            with (
+                patch("app.auth.admin_account_created", return_value=True),
+                patch("app.auth.current_user", fake_user),
+                patch("app.app.delete_duplicates", return_value={"success": True, "deleted": 1, "skipped": 0, "details": ["Keep 0100DUPES0000000 v1: X:\\library\\keeper.nsz (ext=nsz, size=100).", "Plan delete duplicate 0100DUPES0000000 v1: X:\\library\\duplicate.nsp (ext=nsp, size=90)."], "errors": []}),
+            ):
+                from app.app import manage_delete_duplicates
+                response = manage_delete_duplicates()
 
-                result = delete_older_updates(dry_run=True, verbose=True)
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["deleted"], 1)
+        self.assertEqual(payload["skipped"], 0)
+        self.assertFalse(any(line.startswith("Skip ") for line in payload["details"]))
 
-        self.assertTrue(result["success"])
-        self.assertEqual(result["deleted"], 0)
-        self.assertEqual(result["skipped"], 1)
-        self.assertTrue(any("Skip shared file" in line for line in result["details"]))
-        delete_targets_mock.assert_called_once_with(
-            [older_update],
-            dry_run=True,
-            verbose=True,
-            detail_limit=200,
-        )
+    def test_manage_delete_orphaned_addons_api_does_not_report_skipped_items(self):
+        fake_user = self._AdminUser()
+
+        with flask_app.test_request_context("/api/manage/delete-orphaned-addons", method="POST", json={"dry_run": True, "verbose": True}):
+            with (
+                patch("app.auth.admin_account_created", return_value=True),
+                patch("app.auth.current_user", fake_user),
+                patch("app.app.delete_orphaned_addons", return_value={"success": True, "deleted": 2, "skipped": 0, "details": ["Deleted: X:\\library\\orphaned-dlc.nsp."], "errors": [], "mutated": False}),
+            ):
+                from app.app import manage_delete_orphaned_addons
+                response = manage_delete_orphaned_addons()
+
+        payload = response.get_json()
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["deleted"], 2)
+        self.assertEqual(payload["skipped"], 0)
+        self.assertEqual(payload["details"], ["Deleted: X:\\library\\orphaned-dlc.nsp."])
 
     @patch("app.library.delete_file_by_filepath")
     @patch("app.library.os.remove")

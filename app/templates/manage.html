@@ -432,7 +432,7 @@
             contentType: "application/json",
             success: function (result) {
                 if (result['success']) {
-                    showManageAlert(`Delete updates complete. Deleted ${result['deleted']} files. Skipped ${result['skipped']}.`, 'success');
+                    showManageAlert(`Delete updates complete. Deleted ${result['deleted']} files.`, 'success');
                     showManageOutput(result['details']);
                 } else {
                     showManageAlert(`Delete updates failed: ${result['errors'].join('; ')}`, 'danger');
@@ -458,7 +458,7 @@
             contentType: "application/json",
             success: function (result) {
                 if (result['success']) {
-                    showManageAlert(`Delete duplicates complete. Deleted ${result['deleted']} files. Skipped ${result['skipped']}.`, 'success');
+                    showManageAlert(`Delete duplicates complete. Deleted ${result['deleted']} files.`, 'success');
                     showManageOutput(result['details']);
                 } else {
                     showManageAlert(`Delete duplicates failed: ${result['errors'].join('; ')}`, 'danger');
@@ -497,7 +497,7 @@
             contentType: "application/json",
             success: function (result) {
                 if (result['success']) {
-                    showManageAlert(`Delete orphaned add-ons complete. Deleted ${result['deleted']} files. Skipped ${result['skipped']}.`, 'success');
+                    showManageAlert(`Delete orphaned add-ons complete. Deleted ${result['deleted']} files.`, 'success');
                     showManageOutput(result['details']);
                 } else {
                     showManageAlert(`Delete orphaned add-ons failed: ${result['errors'].join('; ')}`, 'danger');
