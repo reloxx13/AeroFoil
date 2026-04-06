@@ -22,7 +22,6 @@ from app.downloads.prowlarr import ProwlarrClient, filter_results, pick_best_res
 from app.library import _ensure_unique_path, _sanitize_component, enqueue_cleanup_roots, enqueue_organize_paths
 from app.settings import load_settings
 from app.utils import get_supported_content_extension, is_supported_content_path, is_wrapped_content_path
-
 logger = logging.getLogger("downloads.manager")
 
 _state_lock = threading.Lock()
@@ -31,6 +30,7 @@ _state = {
     "last_run": 0.0,
     "pending": {},  # key -> info
     "completed": set(),
+    "completed_identities": set(),
 }
 _state_loaded = False
 
@@ -982,6 +982,15 @@ def _get_pending_identity(info):
     return None
 
 
+def _get_completed_identities_locked():
+    identities = _state.get("completed_identities")
+    if isinstance(identities, set):
+        return identities
+    identities = set(identities or [])
+    _state["completed_identities"] = identities
+    return identities
+
+
 def _build_restored_pending_key(item):
     protocol = str((item or {}).get("protocol") or "").strip().lower() or "download"
     client_type = str((item or {}).get("client_type") or "").strip().lower() or "client"
@@ -990,8 +999,6 @@ def _build_restored_pending_key(item):
         return f"restored:{protocol}:{client_type}:{item_id}"
     label = _normalize_match_text((item or {}).get("name")) or "unknown"
     return f"restored:{protocol}:{client_type}:name:{label}"
-
-
 def _infer_content_info_from_completed_item(item):
     src_path = str((item or {}).get("path") or "").strip()
     if not src_path:
@@ -1108,7 +1115,8 @@ def _infer_pending_info_from_queue_item(item):
         info["title_id"] = inferred.get("title_id")
         info["app_id"] = inferred.get("app_id")
         info["app_type"] = inferred.get("app_type")
-        info["version"] = inferred.get("version")
+        if inferred.get("app_type") != APP_TYPE_BASE:
+            info["version"] = inferred.get("version")
         info["title_name"] = inferred.get("title_name") or info["title_name"]
     return info
 
@@ -1125,20 +1133,23 @@ def _restore_pending_from_active(downloads):
             queued_items.extend(list_active_downloads(protocol, client_cfg))
         except Exception as exc:
             logger.warning("Failed to restore pending %s queue state: %s", protocol, exc)
-        try:
-            queued_items.extend(list_completed_downloads(protocol, client_cfg))
-        except Exception as exc:
-            logger.warning("Failed to restore completed %s queue state: %s", protocol, exc)
+        if protocol == "usenet":
+            try:
+                queued_items.extend(list_completed_downloads(protocol, client_cfg))
+            except Exception as exc:
+                logger.warning("Failed to restore completed %s queue state: %s", protocol, exc)
 
     if not queued_items:
         return 0
 
     restored = 0
     with _state_lock:
+        completed_identities = _get_completed_identities_locked()
         known_identities = {
             identity for identity in (_get_pending_identity(info) for info in _state["pending"].values())
             if identity
         }
+        known_identities.update(completed_identities)
         for item in queued_items:
             identity = _get_pending_identity(item)
             if identity and identity in known_identities:
@@ -1201,12 +1212,13 @@ def _resolve_completed_update_info(info, completed_item):
         return info
     title_id = str(info.get("title_id") or "").strip()
     version = info.get("version")
-    if title_id and version is not None:
+    if info.get("app_type") != APP_TYPE_BASE and title_id and version is not None:
         return info
     inferred = _infer_update_info_from_completed_item(completed_item)
     if not inferred:
         return info
     merged = dict(info)
+    merged["app_type"] = APP_TYPE_UPD
     merged["title_id"] = inferred.get("title_id")
     merged["title_name"] = inferred.get("title_name") or merged.get("title_name")
     merged["version"] = inferred.get("version")
@@ -1416,6 +1428,9 @@ def _process_tracked_completed_item_locked(key, info, bucket):
 
     _state["pending"].pop(key, None)
     _state["completed"].add(key)
+    identity = _get_pending_identity(match) or _get_pending_identity(info)
+    if identity:
+        _get_completed_identities_locked().add(identity)
     if matched_id:
         ok, message = remove_completed_download(
             str(info.get("protocol") or "").strip().lower(),
@@ -1619,7 +1634,6 @@ def _build_generic_import_destination(dest_root, src_path):
         basename = basename[:-4]
     return _ensure_unique_path(os.path.join(dest_root, basename))
 
-
 def _move_generic_importable_files(src_path, dest_root, excluded_paths=None):
     excluded = {
         os.path.normcase(os.path.normpath(path))
@@ -1647,8 +1661,6 @@ def _move_generic_importable_files(src_path, dest_root, excluded_paths=None):
     except Exception as e:
         logger.warning("Failed to move download %s: %s", src_path, e)
         return None, str(e)
-
-
 def _normalize_imported_wrapped_files(dest_path):
     if not dest_path or not os.path.exists(dest_path):
         return dest_path
@@ -1700,6 +1712,7 @@ def _move_completed_with_reason(item, update_info=None):
 
     if (
         update_info
+        and update_info.get("app_type") != APP_TYPE_BASE
         and update_info.get("title_id")
         and update_info.get("version")
         and str(update_info.get("title_id")).strip().lower() != "manual"

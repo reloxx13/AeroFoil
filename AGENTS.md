@@ -44,6 +44,7 @@ Tests use the standard library `unittest` framework with `unittest.mock.patch`. 
 
 ## Commit & Pull Request Guidelines
 Match the existing history: short imperative Conventional Commit style subjects. Keep commits scoped to one change. If an issue number is given, include it in the commit msg. PRs should describe the user-visible impact, note any config or migration implications, link related issues, and include screenshots for UI/template changes. When a branch touches downloads or library management, mention protocol/client support, queue behavior, cleanup actions, and the focused unittest commands that cover the change.
+Use non-interactive Git editor flows by default. Prefer commands such as `git commit --no-edit` or explicitly setting a no-op editor instead of opening an interactive editor during rebases, merges, or other automated Git steps.
 
 ## Security & Configuration Tips
 Do not commit secrets, `keys.txt`, or real API credentials. Prefer `AEROFOIL_*` environment variables over legacy `OWNFOIL_*` names. For production, set a strong `AEROFOIL_SECRET_KEY` and validate proxy settings before enabling trusted forwarded headers.
