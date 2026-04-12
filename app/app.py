@@ -4281,7 +4281,7 @@ def manage_organize_library():
     dry_run = bool(data.get('dry_run', False))
     verbose = bool(data.get('verbose', False))
     results = organize_library(dry_run=dry_run, verbose=verbose)
-    if results.get('success') and not dry_run:
+    if not dry_run and results.get('mutated'):
         post_library_change()
     return jsonify(results)
 
@@ -4292,7 +4292,7 @@ def manage_delete_updates():
     dry_run = bool(data.get('dry_run', False))
     verbose = bool(data.get('verbose', False))
     results = delete_older_updates(dry_run=dry_run, verbose=verbose)
-    if results.get('success') and not dry_run:
+    if not dry_run and results.get('mutated'):
         post_library_change()
     return jsonify(results)
 
@@ -4303,7 +4303,7 @@ def manage_delete_duplicates():
     dry_run = bool(data.get('dry_run', False))
     verbose = bool(data.get('verbose', False))
     results = delete_duplicates(dry_run=dry_run, verbose=verbose)
-    if results.get('success') and not dry_run:
+    if not dry_run and results.get('mutated'):
         post_library_change()
     return jsonify(results)
 
@@ -4405,7 +4405,7 @@ def manage_convert_nsz():
         threads=threads,
         verify=verify
     )
-    if results.get('success') and not dry_run:
+    if not dry_run and results.get('mutated'):
         post_library_change()
     return jsonify(results)
 
@@ -4438,7 +4438,7 @@ def manage_convert_single():
         threads=threads,
         verify=verify
     )
-    if results.get('success') and not dry_run:
+    if not dry_run and results.get('mutated'):
         post_library_change()
     return jsonify(results)
 
@@ -4488,7 +4488,7 @@ def manage_convert_job():
                     'details': []
                 }
             _job_finish(job_id, results)
-            if results.get('success') and not dry_run:
+            if not dry_run and results.get('mutated'):
                 try:
                     post_library_change()
                 except Exception:
@@ -4545,7 +4545,7 @@ def manage_convert_single_job():
                     'details': []
                 }
             _job_finish(job_id, results)
-            if results.get('success') and not dry_run:
+            if not dry_run and results.get('mutated'):
                 try:
                     post_library_change()
                 except Exception:

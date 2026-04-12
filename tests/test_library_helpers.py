@@ -355,6 +355,30 @@ class LibraryHelperTests(unittest.TestCase):
         self.assertEqual(payload["skipped"], 0)
         self.assertEqual(payload["details"], ["Deleted: X:\\library\\old-update.nsp."])
 
+    @patch("app.app.post_library_change")
+    @patch("app.app.delete_older_updates")
+    def test_manage_delete_updates_runs_post_change_when_mutated_despite_errors(
+        self,
+        delete_updates_mock,
+        post_library_change_mock,
+    ):
+        delete_updates_mock.return_value = {
+            "success": False,
+            "deleted": 1,
+            "skipped": 0,
+            "mutated": True,
+            "details": ["Deleted: X:\\library\\old-update.nsp."],
+            "errors": ["one file failed"],
+        }
+
+        with flask_app.test_request_context("/api/manage/delete-updates", method="POST", json={}):
+            from app.app import manage_delete_updates
+            response = manage_delete_updates.__wrapped__()
+
+        payload = response.get_json()
+        self.assertFalse(payload["success"])
+        post_library_change_mock.assert_called_once_with()
+
     def test_manage_delete_duplicates_api_does_not_report_skipped_items(self):
         fake_user = self._AdminUser()
 
@@ -372,6 +396,94 @@ class LibraryHelperTests(unittest.TestCase):
         self.assertEqual(payload["deleted"], 1)
         self.assertEqual(payload["skipped"], 0)
         self.assertFalse(any(line.startswith("Skip ") for line in payload["details"]))
+
+    @patch("app.app.post_library_change")
+    @patch("app.app.delete_duplicates")
+    def test_manage_delete_duplicates_runs_post_change_when_mutated_despite_errors(
+        self,
+        delete_duplicates_mock,
+        post_library_change_mock,
+    ):
+        delete_duplicates_mock.return_value = {
+            "success": False,
+            "deleted": 1,
+            "skipped": 0,
+            "mutated": True,
+            "details": ["Deleted duplicate 0100DUPES0000000 v1: X:\\library\\duplicate.nsp."],
+            "errors": ["cleanup failed"],
+        }
+
+        with flask_app.test_request_context("/api/manage/delete-duplicates", method="POST", json={}):
+            from app.app import manage_delete_duplicates
+            response = manage_delete_duplicates.__wrapped__()
+
+        payload = response.get_json()
+        self.assertFalse(payload["success"])
+        post_library_change_mock.assert_called_once_with()
+
+    @patch("app.library.os.path.getmtime")
+    @patch("app.library.os.path.exists", return_value=True)
+    @patch("app.library.Apps")
+    def test_delete_duplicates_prefers_newer_detected_version_over_extension_priority(
+        self,
+        apps_mock,
+        exists_mock,
+        getmtime_mock,
+    ):
+        app = self._make_app(1, "0100AAAA00000800", "UPDATE", 131072)
+        older_file = self._make_file(101, "X:\\library\\Example Title [0100AAAA00000800] [v65536].nsz", [app])
+        older_file.extension = "nsz"
+        older_file.size = 500
+        newer_file = self._make_file(102, "X:\\library\\Example Title [0100AAAA00000800] [v131072].nsp", [app])
+        newer_file.extension = "nsp"
+        newer_file.size = 400
+        app.files = [older_file, newer_file]
+
+        apps_mock.owned.is_.return_value = True
+        apps_mock.query.filter.return_value.all.return_value = [app]
+        getmtime_mock.side_effect = lambda path: {
+            older_file.filepath: 200,
+            newer_file.filepath: 100,
+        }[path]
+
+        result = delete_duplicates(dry_run=True, verbose=True)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["deleted"], 1)
+        self.assertIn(newer_file.filepath, result["details"][0])
+        self.assertIn(older_file.filepath, result["details"][1])
+
+    @patch("app.library.os.path.getmtime")
+    @patch("app.library.os.path.exists", return_value=True)
+    @patch("app.library.Apps")
+    def test_delete_duplicates_falls_back_to_extension_priority_without_version_tokens(
+        self,
+        apps_mock,
+        exists_mock,
+        getmtime_mock,
+    ):
+        app = self._make_app(1, "0100BBBB00000800", "UPDATE", 0)
+        preferred_file = self._make_file(201, "X:\\library\\Example Preferred [0100BBBB00000800].nsz", [app])
+        preferred_file.extension = "nsz"
+        preferred_file.size = 300
+        other_file = self._make_file(202, "X:\\library\\Example Other [0100BBBB00000800].nsp", [app])
+        other_file.extension = "nsp"
+        other_file.size = 400
+        app.files = [preferred_file, other_file]
+
+        apps_mock.owned.is_.return_value = True
+        apps_mock.query.filter.return_value.all.return_value = [app]
+        getmtime_mock.side_effect = lambda path: {
+            preferred_file.filepath: 100,
+            other_file.filepath: 200,
+        }[path]
+
+        result = delete_duplicates(dry_run=True, verbose=True)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["deleted"], 1)
+        self.assertIn(preferred_file.filepath, result["details"][0])
+        self.assertIn(other_file.filepath, result["details"][1])
 
     def test_manage_delete_orphaned_addons_api_does_not_report_skipped_items(self):
         fake_user = self._AdminUser()
@@ -570,6 +682,77 @@ class LibraryHelperTests(unittest.TestCase):
         self.assertEqual(status_code, 400)
         self.assertFalse(response.get_json()["success"])
         run_post_library_change_mock.assert_not_called()
+
+    @patch("app.app.post_library_change")
+    @patch("app.app.organize_library")
+    def test_manage_organize_library_runs_post_change_when_mutated_despite_errors(
+        self,
+        organize_library_mock,
+        post_library_change_mock,
+    ):
+        organize_library_mock.return_value = {
+            "success": False,
+            "moved": 2,
+            "skipped": 0,
+            "folders_deleted": 0,
+            "folders_failed": 0,
+            "mutated": True,
+            "errors": ["one file failed"],
+            "details": [],
+        }
+
+        with flask_app.test_request_context("/api/manage/organize", method="POST", json={}):
+            from app.app import manage_organize_library
+            response = manage_organize_library.__wrapped__()
+
+        self.assertFalse(response.get_json()["success"])
+        post_library_change_mock.assert_called_once_with()
+
+    @patch("app.app.post_library_change")
+    @patch("app.app.convert_to_nsz")
+    def test_manage_convert_nsz_runs_post_change_when_mutated_despite_errors(
+        self,
+        convert_mock,
+        post_library_change_mock,
+    ):
+        convert_mock.return_value = {
+            "success": False,
+            "converted": 1,
+            "skipped": 0,
+            "mutated": True,
+            "errors": ["one file failed"],
+            "details": [],
+        }
+
+        with flask_app.test_request_context("/api/manage/convert", method="POST", json={"command": "nsz"}):
+            from app.app import manage_convert_nsz
+            response = manage_convert_nsz.__wrapped__()
+
+        self.assertFalse(response.get_json()["success"])
+        post_library_change_mock.assert_called_once_with()
+
+    @patch("app.app.post_library_change")
+    @patch("app.app.convert_single_to_nsz")
+    def test_manage_convert_single_runs_post_change_when_mutated_despite_errors(
+        self,
+        convert_single_mock,
+        post_library_change_mock,
+    ):
+        convert_single_mock.return_value = {
+            "success": False,
+            "converted": 1,
+            "skipped": 0,
+            "mutated": True,
+            "errors": ["verify failed after write"],
+            "details": [],
+        }
+
+        with flask_app.test_request_context("/api/manage/convert-single", method="POST", json={"file_id": 1, "command": "nsz"}):
+            from app.app import manage_convert_single
+            response = manage_convert_single.__wrapped__()
+
+        self.assertFalse(response.get_json()["success"])
+        post_library_change_mock.assert_called_once_with()
 
 
 if __name__ == '__main__':
