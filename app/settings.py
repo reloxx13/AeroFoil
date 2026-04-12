@@ -196,6 +196,9 @@ def _normalize_library_naming_templates(raw_templates):
                 'folder': str(sec.get('folder') or fallback.get('folder') or ''),
                 'filename': str(sec.get('filename') or fallback.get('filename') or ''),
             }
+        legacy_update_filename = clean.get('update', {}).get('filename')
+        if legacy_update_filename == "{title} [{title_id}] [UPDATE][v{version}].{ext}":
+            clean['update']['filename'] = "{title} [{app_id}] [UPDATE][v{version}].{ext}"
         clean_name = str(name or '').strip() or 'default'
         normalized[clean_name] = clean
 

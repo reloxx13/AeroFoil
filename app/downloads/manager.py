@@ -1612,12 +1612,13 @@ def _select_update_file_path(src_path, expected_version):
     return candidates[0][1]
 
 
-def _build_update_destination(dest_root, title_id, title_name, version, src_path):
+def _build_update_destination(dest_root, title_id, app_id, title_name, version, src_path):
     safe_title = _sanitize_component(title_name or title_id)
     safe_title_id = _sanitize_component(title_id)
+    safe_app_id = _sanitize_component(app_id or title_id)
     extension = _get_import_extension(src_path)
     folder = os.path.join(dest_root, f"{safe_title} [{safe_title_id}]", "Updates", f"v{version}")
-    filename = f"{safe_title} [{safe_title_id}] [UPDATE][v{version}].{extension}"
+    filename = f"{safe_title} [{safe_app_id}] [UPDATE][v{version}].{extension}"
     filename = _sanitize_component(filename)
     return folder, filename
 
@@ -1806,7 +1807,14 @@ def _move_completed_with_reason(item, update_info=None):
                 requested_version,
                 highest_owned,
             )
-        dest_dir, dest_filename = _build_update_destination(dest_root, title_id, title_name, actual_version, update_path)
+        dest_dir, dest_filename = _build_update_destination(
+            dest_root,
+            title_id,
+            update_info.get("app_id"),
+            title_name,
+            actual_version,
+            update_path,
+        )
         dest_path = os.path.join(dest_dir, dest_filename)
         dest_path = _ensure_unique_path(dest_path)
         try:

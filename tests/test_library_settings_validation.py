@@ -4,7 +4,7 @@ import stat
 import unittest
 from unittest.mock import patch
 
-from app.settings import verify_settings
+from app.settings import _normalize_library_naming_templates, verify_settings
 
 TEST_TMP_ROOT = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".tmp", "library-settings-tests")
 
@@ -79,6 +79,36 @@ class LibrarySettingsValidationTests(unittest.TestCase):
         success, errors = verify_settings('library', payload)
         self.assertTrue(success)
         self.assertEqual(errors, [])
+
+    def test_library_naming_templates_fix_legacy_update_filename_token(self):
+        normalized = _normalize_library_naming_templates({
+            'active': 'flat',
+            'templates': {
+                'flat': {
+                    'base': {
+                        'folder': '.',
+                        'filename': '{title} [{title_id}] [BASE][v{version}].{ext}',
+                    },
+                    'update': {
+                        'folder': '.',
+                        'filename': '{title} [{title_id}] [UPDATE][v{version}].{ext}',
+                    },
+                    'dlc': {
+                        'folder': '.',
+                        'filename': '{title} - {dlc_name} [{app_id}] [DLC][v{version}].{ext}',
+                    },
+                    'other': {
+                        'folder': '.',
+                        'filename': '{title} [{title_id}] [UNKNOWN].{ext}',
+                    },
+                },
+            },
+        })
+
+        self.assertEqual(
+            normalized['templates']['flat']['update']['filename'],
+            '{title} [{app_id}] [UPDATE][v{version}].{ext}',
+        )
 
 
 if __name__ == '__main__':
