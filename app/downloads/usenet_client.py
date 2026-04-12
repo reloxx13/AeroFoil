@@ -146,7 +146,7 @@ def list_active(url, api_key, category=None, timeout_seconds=15):
     return active
 
 
-def list_completed(url, api_key, category=None, timeout_seconds=15):
+def list_history(url, api_key, category=None, timeout_seconds=15):
     if not url or not api_key:
         return []
     try:
@@ -164,37 +164,55 @@ def list_completed(url, api_key, category=None, timeout_seconds=15):
         history.get("completed_dir")
         or payload.get("completed_dir")
     )
-    completed = []
+    history_items = []
     for item in slots:
         if not isinstance(item, dict):
             continue
         item_category = str(item.get("category") or item.get("cat") or "").strip()
         if category and item_category != category:
             continue
-        status = str(item.get("status") or "").lower()
+        status_text = str(item.get("status") or "").strip()
+        status = status_text.lower()
         completed_flag = str(item.get("completed") or "").lower()
-        if status not in ("completed", "complete") and completed_flag not in ("1", "true", "yes"):
+        terminal_state = _classify_history_terminal_state(status, completed_flag)
+        if not terminal_state:
             continue
         nzo_id = str(item.get("nzo_id") or "").strip() or None
         path = item.get("storage") or item.get("path") or item.get("downloaded_path") or ""
         path = str(path or "").strip()
         normalized_path = _normalize_completed_root(path)
-        if not normalized_path:
-            # Avoid treating the global completed_dir as a per-job path.
-            continue
+        if terminal_state == "completed":
+            if not normalized_path:
+                # Avoid treating the global completed_dir as a per-job path.
+                continue
         item_completed_dir = _normalize_completed_root(item.get("completed_dir"))
-        if normalized_path == (item_completed_dir or completed_dir):
+        if terminal_state == "completed" and normalized_path == (item_completed_dir or completed_dir):
             # Avoid treating SABnzbd's shared completed_dir as a per-job path.
             continue
-        completed.append({
+        history_items.append({
             "id": nzo_id,
             "hash": nzo_id,
             "protocol": "usenet",
             "client_type": "sabnzbd",
+            "status": status_text,
+            "state": terminal_state,
+            "state_reason": _extract_history_state_reason(item, terminal_state),
             "path": path,
             "name": item.get("name") or item.get("nzb_name") or item.get("filename") or "",
         })
-    return completed
+    return history_items
+
+
+def list_completed(url, api_key, category=None, timeout_seconds=15):
+    return [
+        item for item in list_history(
+            url,
+            api_key,
+            category=category,
+            timeout_seconds=timeout_seconds,
+        )
+        if item.get("state") == "completed"
+    ]
 
 
 def remove_history(url, api_key, item_id, timeout_seconds=15, delete_files=False):
@@ -253,6 +271,27 @@ def _normalize_completed_root(path):
         return ""
     normalized = os.path.normpath(text)
     return os.path.normcase(normalized)
+
+
+def _classify_history_terminal_state(status, completed_flag):
+    if status in ("completed", "complete") or completed_flag in ("1", "true", "yes"):
+        return "completed"
+    if any(token in status for token in ("cancel", "abort", "delete", "deleted")):
+        return "cancelled"
+    if any(token in status for token in ("fail", "error")):
+        return "failed"
+    return None
+
+
+def _extract_history_state_reason(item, terminal_state):
+    if terminal_state == "completed":
+        return None
+    for field in ("fail_message", "stage_log", "action_line"):
+        value = str((item or {}).get(field) or "").strip()
+        if value:
+            return value
+    status_text = str((item or {}).get("status") or "").strip()
+    return status_text or None
 
 
 def _sab_request(base_url, api_key, mode, timeout_seconds=15, **params):

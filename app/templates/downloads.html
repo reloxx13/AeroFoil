@@ -175,7 +175,15 @@
                 row.append($('<td class="small"></td>').text((item['label'] || 'Manual download').toString()));
                 row.append($('<td class="small text-muted"></td>').text((item['protocol'] || '-').toString()));
                 row.append($('<td class="small text-muted"></td>').text((item['client_type'] || '-').toString()));
-                row.append($('<td class="small"></td>').text(formatQueueState(item)));
+                const stateText = formatQueueState(item);
+                const stateCell = $('<td class="small"></td>').text(stateText);
+                const stateReason = String(item?.state_reason || '').replace(/\s+/g, ' ').trim();
+                if (stateReason) {
+                    stateCell.attr('title', stateReason);
+                    stateCell.attr('aria-label', `${stateText}: ${stateReason}`);
+                    stateCell.css('cursor', 'help');
+                }
+                row.append(stateCell);
                 const actionCell = $('<td class="small"></td>');
                 const deleteButton = $('<button type="button" class="btn btn-outline-danger btn-sm"></button>').text('Delete');
                 deleteButton.prop('disabled', !item['deletable']);

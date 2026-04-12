@@ -29,7 +29,7 @@ from app.downloads.manager import (
     sort_download_search_results,
 )
 from app.downloads.prowlarr import _normalize_result
-from app.downloads.usenet_client import add_nzb, list_active, list_completed, remove_history, remove_queue_item
+from app.downloads.usenet_client import add_nzb, list_active, list_completed, list_history, remove_history, remove_queue_item
 from app.downloads.usenet_client import _restrict_job_to_matching_update_files
 
 
@@ -576,7 +576,7 @@ class QueueRoutingTests(unittest.TestCase):
         self.assertEqual(state["pending"][0]["protocol"], "torrent")
 
     @patch("app.downloads.manager._infer_pending_info_from_queue_item")
-    @patch("app.downloads.manager.list_completed_downloads")
+    @patch("app.downloads.manager.list_history_downloads")
     @patch("app.downloads.manager.list_active_downloads", return_value=[])
     @patch("app.downloads.manager._get_completed_poll_targets")
     @patch("app.downloads.manager.load_settings")
@@ -593,7 +593,7 @@ class QueueRoutingTests(unittest.TestCase):
         load_settings_mock,
         poll_targets_mock,
         list_active_mock,
-        list_completed_mock,
+        list_history_mock,
         infer_pending_mock,
     ):
         load_settings_mock.return_value = {
@@ -607,7 +607,7 @@ class QueueRoutingTests(unittest.TestCase):
             }
         }
         poll_targets_mock.return_value = [("usenet", {"type": "sabnzbd", "category": "aerofoil"})]
-        list_completed_mock.return_value = [{
+        list_history_mock.return_value = [{
             "id": "nzo123",
             "hash": "nzo123",
             "protocol": "usenet",
@@ -658,7 +658,7 @@ class QueueRoutingTests(unittest.TestCase):
         load_settings_mock,
         poll_targets_mock,
         list_active_mock,
-        list_completed_mock,
+        list_history_mock,
         infer_pending_mock,
     ):
         load_settings_mock.return_value = {
@@ -671,7 +671,7 @@ class QueueRoutingTests(unittest.TestCase):
             }
         }
         poll_targets_mock.return_value = [("torrent", {"type": "qbittorrent", "category": "aerofoil"})]
-        list_completed_mock.return_value = [{
+        list_history_mock.return_value = [{
             "id": "ABC123",
             "hash": "ABC123",
             "protocol": "torrent",
@@ -686,7 +686,7 @@ class QueueRoutingTests(unittest.TestCase):
         infer_pending_mock.assert_not_called()
 
     @patch("app.downloads.manager._infer_pending_info_from_queue_item")
-    @patch("app.downloads.manager.list_completed_downloads")
+    @patch("app.downloads.manager.list_history_downloads")
     @patch("app.downloads.manager.list_active_downloads", return_value=[])
     @patch("app.downloads.manager._get_completed_poll_targets")
     @patch("app.downloads.manager.load_settings")
@@ -704,7 +704,7 @@ class QueueRoutingTests(unittest.TestCase):
         load_settings_mock,
         poll_targets_mock,
         list_active_mock,
-        list_completed_mock,
+        list_history_mock,
         infer_pending_mock,
     ):
         load_settings_mock.return_value = {
@@ -718,7 +718,7 @@ class QueueRoutingTests(unittest.TestCase):
             }
         }
         poll_targets_mock.return_value = [("usenet", {"type": "sabnzbd", "category": "aerofoil"})]
-        list_completed_mock.return_value = [{
+        list_history_mock.return_value = [{
             "id": "nzo123",
             "hash": "nzo123",
             "protocol": "usenet",
@@ -731,7 +731,7 @@ class QueueRoutingTests(unittest.TestCase):
 
         self.assertEqual(state["pending"], [])
         infer_pending_mock.assert_not_called()
-    @patch("app.downloads.manager.list_completed_downloads")
+    @patch("app.downloads.manager.list_history_downloads")
     @patch("app.downloads.manager.list_active_downloads", return_value=[])
     @patch("app.downloads.manager._get_completed_poll_targets")
     @patch("app.downloads.manager.load_settings")
@@ -763,7 +763,7 @@ class QueueRoutingTests(unittest.TestCase):
         load_settings_mock,
         poll_targets_mock,
         list_active_mock,
-        list_completed_mock,
+        list_history_mock,
     ):
         load_settings_mock.return_value = {
             "downloads": {
@@ -776,7 +776,7 @@ class QueueRoutingTests(unittest.TestCase):
             }
         }
         poll_targets_mock.return_value = [("usenet", {"type": "sabnzbd", "category": "aerofoil"})]
-        list_completed_mock.return_value = [{
+        list_history_mock.return_value = [{
             "id": "nzo123",
             "hash": "nzo123",
             "protocol": "usenet",
@@ -789,7 +789,70 @@ class QueueRoutingTests(unittest.TestCase):
 
         self.assertEqual(state["pending"][0]["label"], "Example Release NSW-GRP")
 
-    @patch("app.downloads.manager.list_completed_downloads", return_value=[])
+    @patch("app.downloads.manager.list_history_downloads")
+    @patch("app.downloads.manager.list_active_downloads", return_value=[])
+    @patch("app.downloads.manager._get_completed_poll_targets")
+    @patch("app.downloads.manager.load_settings")
+    @patch("app.downloads.manager._state_lock")
+    @patch("app.downloads.manager._state", {
+        "running": False,
+        "last_run": 123.0,
+        "pending": {
+            "0100000000010000:123": {
+                "title_id": "0100000000010000",
+                "version": 123,
+                "hash": "nzo123",
+                "id": "nzo123",
+                "expected_name": "Example Failed Release",
+                "title_name": "Example Title",
+                "protocol": "usenet",
+                "client_type": "sabnzbd",
+                "state": "queued",
+                "state_reason": None,
+                "last_seen_status": None,
+                "last_seen_path": None,
+            }
+        },
+        "completed": set(),
+    })
+    def test_get_downloads_state_marks_sab_failed_history_items_as_failed(
+        self,
+        _state_lock_mock,
+        load_settings_mock,
+        poll_targets_mock,
+        list_active_mock,
+        list_history_mock,
+    ):
+        load_settings_mock.return_value = {
+            "downloads": {
+                "usenet_client": {
+                    "type": "sabnzbd",
+                    "url": "http://sab.local",
+                    "api_key": "secret",
+                    "category": "aerofoil",
+                }
+            }
+        }
+        poll_targets_mock.return_value = [("usenet", {"type": "sabnzbd", "category": "aerofoil"})]
+        list_history_mock.return_value = [{
+            "id": "nzo123",
+            "hash": "nzo123",
+            "protocol": "usenet",
+            "client_type": "sabnzbd",
+            "name": "Example Failed Release",
+            "status": "Failed",
+            "state": "failed",
+            "state_reason": "Unpack failed",
+            "path": "",
+        }]
+
+        state = get_downloads_state()
+
+        self.assertEqual(state["pending"][0]["state"], "failed")
+        self.assertEqual(state["pending"][0]["state_reason"], "Unpack failed")
+        self.assertEqual(state["pending"][0]["label"], "Example Failed Release")
+
+    @patch("app.downloads.manager.list_history_downloads", return_value=[])
     @patch("app.downloads.manager.list_active_downloads", return_value=[])
     @patch("app.downloads.manager._get_completed_poll_targets")
     @patch("app.downloads.manager.load_settings")
@@ -821,7 +884,7 @@ class QueueRoutingTests(unittest.TestCase):
         load_settings_mock,
         poll_targets_mock,
         list_active_mock,
-        list_completed_mock,
+        list_history_mock,
     ):
         load_settings_mock.return_value = {
             "downloads": {
@@ -1075,6 +1138,55 @@ class SabSelectionTests(unittest.TestCase):
 
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["path"], "D:\\Downloads\\Complete\\Example Release")
+
+    @patch("app.downloads.usenet_client._sab_request")
+    def test_list_completed_can_include_failed_history_rows_for_queue_state(self, sab_request_mock):
+        sab_request_mock.return_value = {
+            "history": {
+                "completed_dir": "D:\\Downloads\\Complete",
+                "slots": [
+                    {
+                        "nzo_id": "nzo789",
+                        "status": "Failed",
+                        "category": "aerofoil",
+                        "storage": "",
+                        "name": "Example Failed Release",
+                        "fail_message": "Unpack failed",
+                    }
+                ],
+            }
+        }
+
+        items = list_history(
+            "http://sab.local",
+            "secret",
+            category="aerofoil",
+        )
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["id"], "nzo789")
+        self.assertEqual(items[0]["state"], "failed")
+        self.assertEqual(items[0]["state_reason"], "Unpack failed")
+
+    @patch("app.downloads.usenet_client._sab_request")
+    def test_list_completed_excludes_failed_history_rows_by_default(self, sab_request_mock):
+        sab_request_mock.return_value = {
+            "history": {
+                "completed_dir": "D:\\Downloads\\Complete",
+                "slots": [
+                    {
+                        "nzo_id": "nzo789",
+                        "status": "Failed",
+                        "category": "aerofoil",
+                        "name": "Example Failed Release",
+                    }
+                ],
+            }
+        }
+
+        items = list_completed("http://sab.local", "secret", category="aerofoil")
+
+        self.assertEqual(items, [])
 
 
 class DownloadRemovalRoutingTests(unittest.TestCase):

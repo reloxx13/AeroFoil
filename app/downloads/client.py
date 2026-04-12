@@ -9,6 +9,7 @@ from app.downloads.usenet_client import (
     add_nzb,
     list_active as list_active_usenet,
     list_completed as list_completed_usenet,
+    list_history as list_history_usenet,
     remove_history,
     remove_queue_item,
     test_sabnzbd,
@@ -125,6 +126,19 @@ def list_completed_downloads(protocol, client_cfg, timeout_seconds=15):
             timeout_seconds=timeout_seconds,
         )
     return []
+
+
+def list_history_downloads(protocol, client_cfg, timeout_seconds=15):
+    protocol = str(protocol or "").strip().lower()
+    client_type = str((client_cfg or {}).get("type") or "").strip().lower()
+    if protocol == "usenet" or client_type in USENET_CLIENT_TYPES:
+        return list_history_usenet(
+            url=(client_cfg or {}).get("url"),
+            api_key=(client_cfg or {}).get("api_key"),
+            category=(client_cfg or {}).get("category"),
+            timeout_seconds=timeout_seconds,
+        )
+    return list_completed_downloads(protocol, client_cfg, timeout_seconds=timeout_seconds)
 
 
 def remove_completed_download(protocol, client_cfg, item_id, timeout_seconds=15, delete_files=False):

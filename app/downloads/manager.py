@@ -14,6 +14,7 @@ from app.downloads.client import (
     USENET_CLIENT_TYPES,
     list_active_downloads,
     list_completed_downloads,
+    list_history_downloads,
     queue_download,
     remove_active_download,
     remove_completed_download,
@@ -183,7 +184,7 @@ def _get_download_activity_snapshot(downloads):
             active_items = []
             protocol_errors.append(f"active: {exc}")
         try:
-            completed_items = list_completed_downloads(protocol, client_cfg)
+            completed_items = list_history_downloads(protocol, client_cfg)
         except Exception as exc:
             logger.warning("Failed to load completed %s downloads: %s", protocol, exc)
             completed_items = []
@@ -222,6 +223,28 @@ def _normalize_queue_state_label(status):
     if "seed" in text or "upload" in text:
         return "seeding"
     return text
+
+
+def _normalize_terminal_queue_state(item):
+    if isinstance(item, dict):
+        explicit_state = str(item.get("state") or "").strip().lower()
+        if explicit_state in ("completed", "failed", "cancelled"):
+            return explicit_state
+        status_text = str(item.get("status") or "").strip().lower()
+    else:
+        explicit_state = str(item or "").strip().lower()
+        if explicit_state in ("completed", "failed", "cancelled"):
+            return explicit_state
+        status_text = explicit_state
+    if not status_text:
+        return None
+    if any(token in status_text for token in ("cancel", "abort", "delete", "deleted")):
+        return "cancelled"
+    if any(token in status_text for token in ("fail", "error")):
+        return "failed"
+    if "complete" in status_text:
+        return "completed"
+    return None
 
 
 def _update_pending_live_metadata(info, item=None, status=None):
@@ -313,12 +336,22 @@ def _build_pending_queue_item(key, info, snapshot):
         _clear_pending_stuck(info)
         _update_pending_live_metadata(info, item=active_match)
         state = _normalize_queue_state_label(active_match.get("status"))
+        info["state"] = state
+        info["state_reason"] = None
     elif str(info.get("state") or "").strip().lower() == "stuck":
         state = "stuck"
         state_reason = str(info.get("state_reason") or "").strip() or "waiting for action"
     elif completed_match:
-        _update_pending_live_metadata(info, item=completed_match, status="completed")
-        state = "completed"
+        state = _normalize_terminal_queue_state(completed_match) or "completed"
+        state_reason = str(completed_match.get("state_reason") or "").strip() or None
+        _update_pending_live_metadata(info, item=completed_match, status=state)
+        info["state"] = state
+        info["state_reason"] = state_reason
+    else:
+        remembered_state = _normalize_terminal_queue_state(info)
+        if remembered_state in ("failed", "cancelled"):
+            state = remembered_state
+            state_reason = str(info.get("state_reason") or "").strip() or None
     expected_name = str(info.get("expected_name") or "").strip()
     return {
         "key": key,
@@ -487,7 +520,7 @@ def _format_pending_label(info):
 
 
 def _format_pending_display_label(info, state="queued", active_match=None, completed_match=None):
-    if not active_match or state in ("stuck", "completed"):
+    if not active_match or state in ("stuck", "completed", "failed", "cancelled"):
         for item in (completed_match, active_match):
             name = str((item or {}).get("name") or "").strip()
             if name:
@@ -1113,6 +1146,8 @@ def _infer_pending_info_from_queue_item(item):
     protocol = str(item.get("protocol") or "").strip().lower() or None
     client_type = str(item.get("client_type") or "").strip().lower() or None
     normalized_id = _normalize_pending_item_id(item.get("id") or item.get("hash"), protocol=protocol)
+    terminal_state = _normalize_terminal_queue_state(item)
+    state_reason = str(item.get("state_reason") or "").strip() or None
     info = {
         "title_id": None,
         "app_id": None,
@@ -1124,8 +1159,8 @@ def _infer_pending_info_from_queue_item(item):
         "title_name": name,
         "protocol": protocol,
         "client_type": client_type,
-        "state": "queued",
-        "state_reason": None,
+        "state": terminal_state or "queued",
+        "state_reason": state_reason,
         "last_seen_status": item.get("status") or None,
         "last_seen_path": str(item.get("path") or "").strip() or None,
     }
@@ -1154,7 +1189,7 @@ def _restore_pending_from_active(downloads):
             logger.warning("Failed to restore pending %s queue state: %s", protocol, exc)
         if protocol == "usenet":
             try:
-                queued_items.extend(list_completed_downloads(protocol, client_cfg))
+                queued_items.extend(list_history_downloads(protocol, client_cfg))
             except Exception as exc:
                 logger.warning("Failed to restore completed %s queue state: %s", protocol, exc)
 
