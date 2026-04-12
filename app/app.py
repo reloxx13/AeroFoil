@@ -1119,6 +1119,8 @@ def _build_shop_sections_payload(limit, full_catalog=False):
                 name = title_id or app_id
                 title_name = title_id or name
                 category = ''
+            icon_url = f'/api/shop/icon/{title_id}' if title_id else ((app_info or {}).get('iconUrl') or '')
+
             return {
                 'name': name,
                 'title_name': title_name,
@@ -1127,7 +1129,8 @@ def _build_shop_sections_payload(limit, full_catalog=False):
                 'app_version': row.app_version,
                 'app_type': row.app_type,
                 'category': category,
-                'icon_url': f'/api/shop/icon/{title_id}' if title_id else '',
+                'icon_url': icon_url,
+                'iconUrl': icon_url,
                 'url': f"/api/get_game/{int(row.file_id)}#{row.filename}",
                 'size': int(row.size or 0),
                 'file_id': int(row.file_id),

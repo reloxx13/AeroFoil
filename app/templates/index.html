@@ -900,12 +900,14 @@
             btn.setAttribute('data-bs-app-id', game.app_id);
             btn.setAttribute('data-bs-app-type', game.app_type);
 
-            const iconSrc = game.title_id ? `/api/shop/icon/${game.title_id}` : '';
+            const cacheIconSrc = game.title_id ? `/api/shop/icon/${encodeURIComponent(game.title_id)}?size=web` : '';
+            const directIconSrc = ((game.icon_url || game.iconUrl || '') + '').trim();
+            const iconSrc = cacheIconSrc || directIconSrc || '/static/placeholder-icon.svg';
             const title = escapeHtml(getLibraryDisplayTitle(game));
             const genre = escapeHtml(getPrimaryGenre(game));
             btn.innerHTML = `
                 <div class="discover-tile-body">
-                    <img class="discover-tile-img" src="${iconSrc || '/static/placeholder-icon.svg'}" alt="">
+                    <img class="discover-tile-img" src="${iconSrc}" alt="">
                     <div class="discover-tile-title">${title}</div>
                     <div class="discover-tile-subtitle">${genre}</div>
                 </div>
@@ -914,10 +916,12 @@
             const img = btn.querySelector('img');
             if (img) {
                 img.addEventListener('error', function () {
-                    if (!this.dataset.triedFallback) {
+                    if (!this.dataset.triedFallback && directIconSrc && this.src !== directIconSrc) {
                         this.dataset.triedFallback = '1';
-                        this.src = '/static/placeholder-icon.svg';
+                        this.src = directIconSrc;
+                        return;
                     }
+                    this.src = '/static/placeholder-icon.svg';
                 });
             }
 
