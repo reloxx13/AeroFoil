@@ -5,6 +5,8 @@ from urllib.parse import urljoin
 
 import requests
 
+from app.downloads.versioning import extract_internal_update_version
+
 logger = logging.getLogger("downloads.prowlarr")
 
 
@@ -192,16 +194,7 @@ def _has_version(text, version):
 
 
 def _extract_internal_version_token(text):
-    raw = str(text or "")
-    match = re.search(r"\[v(\d+)\]", raw, re.IGNORECASE)
-    if not match:
-        match = re.search(r"(?<![a-z0-9])v(\d+)(?!\.\d)", raw, re.IGNORECASE)
-    if not match:
-        return None
-    try:
-        return int(match.group(1))
-    except Exception:
-        return None
+    return extract_internal_update_version(text)
 
 
 def filter_results(results, min_seeders=0, min_age_minutes=0, required_terms=None, blacklist_terms=None):

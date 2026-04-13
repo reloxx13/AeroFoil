@@ -979,6 +979,35 @@ class QueueRoutingTests(unittest.TestCase):
         self.assertTrue(add_nzb_mock.call_args.kwargs["exclude_russian"])
         self.assertEqual(add_nzb_mock.call_args.kwargs["expected_version"], 123)
 
+    @patch("app.downloads.client.add_torrent")
+    def test_queue_download_routes_by_client_type_when_protocol_missing(self, add_torrent_mock):
+        add_torrent_mock.return_value = (True, "ok", "abc123")
+
+        ok, message, item_id = queue_download(
+            "",
+            {
+                "type": "qbittorrent",
+                "url": "http://torrent.local",
+                "username": "user",
+                "password": "pass",
+                "category": "aerofoil",
+                "download_path": "X:\\fixture-root\\downloads",
+            },
+            "magnet:?xt=urn:btih:abcdef",
+            expected_name="Game Update",
+            update_only=True,
+            exclude_russian=True,
+            expected_version=123,
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(message, "ok")
+        self.assertEqual(item_id, "abc123")
+        add_torrent_mock.assert_called_once()
+        self.assertEqual(add_torrent_mock.call_args.kwargs["client_type"], "qbittorrent")
+        self.assertEqual(add_torrent_mock.call_args.kwargs["download_path"], "X:\\fixture-root\\downloads")
+        self.assertTrue(add_torrent_mock.call_args.kwargs["update_only"])
+
 
 class SabSelectionTests(unittest.TestCase):
     @patch("app.downloads.usenet_client.time.sleep")
@@ -1003,6 +1032,26 @@ class SabSelectionTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIsNone(message)
         sleep_mock.assert_called_once_with(1)
+        delete_job_files_mock.assert_called_once()
+        self.assertEqual(delete_job_files_mock.call_args.args[3], ["1"])
+
+    @patch("app.downloads.usenet_client._delete_job_files", return_value=True)
+    @patch("app.downloads.usenet_client._get_job_files")
+    def test_restrict_job_matches_semantic_version_when_internal_tag_missing(self, get_job_files_mock, delete_job_files_mock):
+        get_job_files_mock.return_value = [
+            {"filename": "Game Update 1.0.0.nsp", "nzf_id": "1"},
+            {"filename": "Game Update 1.1.0.nsp", "nzf_id": "2"},
+        ]
+
+        ok, message = _restrict_job_to_matching_update_files(
+            "http://sab.local",
+            "secret",
+            "nzo123",
+            expected_version=65792,
+        )
+
+        self.assertTrue(ok)
+        self.assertIsNone(message)
         delete_job_files_mock.assert_called_once()
         self.assertEqual(delete_job_files_mock.call_args.args[3], ["1"])
 

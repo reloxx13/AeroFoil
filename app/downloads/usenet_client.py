@@ -4,12 +4,14 @@ import time
 
 import requests
 
-from app.downloads.torrent_client import _select_update_file_indices
+from app.downloads.constants import DOWNLOADS_USER_AGENT
+from app.downloads.update_selection import (
+    NZB_UPDATE_SELECTION_ERROR,
+    get_matching_update_indices,
+    poll_update_file_names,
+)
 
 logger = logging.getLogger("downloads.sabnzbd")
-
-DOWNLOADS_USER_AGENT = "AeroFoil/Downloads"
-
 
 def test_sabnzbd(url, api_key, timeout_seconds=10):
     if not url:
@@ -382,24 +384,22 @@ def _restrict_job_to_matching_update_files(
     expected_update_number=None,
     expected_version=None,
 ):
-    files = []
-    for _ in range(10):
-        files = _get_job_files(url, api_key, nzo_id, timeout_seconds=timeout_seconds)
-        if files:
-            break
-        time.sleep(1)
+    files = poll_update_file_names(
+        lambda: _get_job_files(url, api_key, nzo_id, timeout_seconds=timeout_seconds),
+        sleep_fn=time.sleep,
+    )
     if not files:
         return False, "Unable to resolve SABnzbd file list for update selection."
 
     file_names = [str(item.get("filename") or "") for item in files]
-    keep_indices = _select_update_file_indices(
+    keep_indices = get_matching_update_indices(
         file_names,
         expected_update_number=expected_update_number,
         expected_version=expected_version,
         exclude_russian=exclude_russian,
     )
     if not keep_indices:
-        return False, "No matching update version found in NZB."
+        return False, NZB_UPDATE_SELECTION_ERROR
 
     keep_set = set(keep_indices)
     remove_ids = []

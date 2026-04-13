@@ -20,6 +20,7 @@ from app.downloads.client import (
     remove_completed_download,
 )
 from app.downloads.prowlarr import ProwlarrClient, filter_results, pick_best_result
+from app.downloads.versioning import extract_internal_update_version
 from app.library import _ensure_unique_path, _sanitize_component, enqueue_cleanup_roots, enqueue_organize_paths
 from app.settings import load_settings
 from app.utils import get_supported_content_extension, is_supported_content_path, is_wrapped_content_path
@@ -1570,17 +1571,7 @@ def _check_completed(downloads, scan_cb=None, post_cb=None):
 
 
 def _extract_update_version_from_name(name):
-    if not name:
-        return None
-    match = re.search(r"\[v(\d+)\]", name, re.IGNORECASE)
-    if not match:
-        match = re.search(r"(?<![a-z0-9])v(\d+)(?!\.\d)", name, re.IGNORECASE)
-    if not match:
-        return None
-    try:
-        return int(match.group(1))
-    except (TypeError, ValueError):
-        return None
+    return extract_internal_update_version(name)
 
 
 def _select_update_file_path(src_path, expected_version):

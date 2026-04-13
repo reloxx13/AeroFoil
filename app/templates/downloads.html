@@ -15,7 +15,7 @@
                 <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
                     <div>
                         <h2 class="pb-2">Downloads</h2>
-                        <p class="text-muted">Live torrent and usenet status plus the pending AeroFoil download queue.</p>
+                        <p class="text-muted">Live torrent and usenet download status plus the pending AeroFoil queue.</p>
                     </div>
                 </div>
 
@@ -146,9 +146,21 @@
         const state = String(item?.state || 'queued');
         const reason = String(item?.state_reason || '');
         if (state === 'stuck' && reason) {
-            return `stuck: ${reason}`;
+            return `Stuck: ${reason}`;
         }
-        return state;
+        return formatStatusLabel(state);
+    }
+
+    function formatStatusLabel(value) {
+        const text = String(value || '').trim();
+        if (!text) {
+            return '-';
+        }
+        return text
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, function (match) {
+                return match.toUpperCase();
+            });
     }
 
     function loadQueueState() {
@@ -164,7 +176,7 @@
             const pending = state['pending'] || [];
             const running = state['running'] ? 'running' : 'idle';
             const lastRun = state['last_run'] ? new Date(state['last_run'] * 1000).toLocaleString() : 'never';
-            $('#downloadsQueueStatus').text(`Status: ${running}. Last check: ${lastRun}. Pending: ${pending.length}.`);
+            $('#downloadsQueueStatus').text(`Queue state: ${formatStatusLabel(running)}. Last check: ${lastRun}. Pending: ${pending.length}.`);
             body.empty();
             if (!pending.length) {
                 body.html(`<tr><td colspan="${queueColumnCount}" class="text-muted">No pending downloads.</td></tr>`);
@@ -203,7 +215,7 @@
             showDownloadsAlert('Missing queue key.', 'danger');
             return;
         }
-        if (!window.confirm('Delete this queued download and remove downloader files if possible?')) {
+        if (!window.confirm('Delete this queued download and remove its downloader files if possible?')) {
             return;
         }
         button.prop('disabled', true);
@@ -261,7 +273,7 @@
                     row.append($('<td class="small text-muted"></td>').text((item['protocol'] || '').toString() || '-'));
                 }
                 row.append($('<td class="small text-muted"></td>').text((item['client_type'] || '').toString() || '-'));
-                row.append($('<td class="small text-muted"></td>').text((item['status'] || '').toString()));
+                row.append($('<td class="small text-muted"></td>').text(formatStatusLabel(item['status'])));
                 row.append($('<td class="small"></td>').text(`${progress.toFixed(1)}%`));
                 if (downloadUiVisibility.show_torrent_columns) {
                     row.append($('<td class="small"></td>').text(formatSpeed(item['down_speed'])));

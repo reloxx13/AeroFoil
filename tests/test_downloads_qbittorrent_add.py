@@ -21,11 +21,13 @@ class _FakeResponse:
 
 
 class _FakeSession:
-    def __init__(self, add_text="Ok.", info_by_hash=None, managed_items=None):
+    def __init__(self, add_text="Ok.", info_by_hash=None, managed_items=None, files_by_hash=None):
         self.headers = {}
         self._add_text = add_text
         self._info_by_hash = dict(info_by_hash or {})
         self._managed_items = list(managed_items or [])
+        self._files_by_hash = dict(files_by_hash or {})
+        self.file_prio_calls = []
 
     def post(self, url, data=None, timeout=None):
         if url.endswith("/api/v2/auth/login"):
@@ -37,6 +39,7 @@ class _FakeSession:
         if url.endswith("/api/v2/torrents/resume"):
             return _FakeResponse(status_code=200, text="")
         if url.endswith("/api/v2/torrents/filePrio"):
+            self.file_prio_calls.append(dict(data or {}))
             return _FakeResponse(status_code=200, text="")
         if url.endswith("/api/v2/torrents/delete"):
             return _FakeResponse(status_code=200, text="")
@@ -52,7 +55,8 @@ class _FakeSession:
                 return _FakeResponse(status_code=200, json_data=[])
             return _FakeResponse(status_code=200, json_data=list(self._managed_items))
         if url.endswith("/api/v2/torrents/files"):
-            return _FakeResponse(status_code=200, json_data=[])
+            lookup = str((params or {}).get("hash") or "").lower()
+            return _FakeResponse(status_code=200, json_data=list(self._files_by_hash.get(lookup, [])))
         return _FakeResponse(status_code=404, json_data=[])
 
 
@@ -144,6 +148,43 @@ class QBittorrentAddTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("rejected", message.lower())
         self.assertIsNone(torrent_hash)
+
+    def test_select_update_file_indices_matches_semantic_version_when_internal_tag_missing(self):
+        selected = torrent_client._select_update_file_indices(
+            [
+                "Example Title Update 1.0.0.nsp",
+                "Example Title Update 1.1.0.nsp",
+            ],
+            expected_version=65792,
+        )
+
+        self.assertEqual(selected, [1])
+
+    def test_select_qbittorrent_highest_version_matches_semantic_version_when_internal_tag_missing(self):
+        torrent_hash = "abc123"
+        fake_session = _FakeSession(
+            files_by_hash={
+                torrent_hash: [
+                    {"index": 0, "name": "Example Title Update 1.0.0.nsp", "priority": 1},
+                    {"index": 1, "name": "Example Title Update 1.1.0.nsp", "priority": 1},
+                ]
+            }
+        )
+
+        ok = torrent_client._select_qbittorrent_highest_version(
+            fake_session,
+            self.base_url,
+            torrent_hash,
+            timeout_seconds=1,
+            exclude_russian=False,
+            expected_version=65792,
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(fake_session.file_prio_calls[0]["id"], "0|1")
+        self.assertEqual(fake_session.file_prio_calls[0]["priority"], 0)
+        self.assertEqual(fake_session.file_prio_calls[1]["id"], "1")
+        self.assertEqual(fake_session.file_prio_calls[1]["priority"], 1)
 
 
 if __name__ == "__main__":

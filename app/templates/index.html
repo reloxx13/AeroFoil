@@ -350,7 +350,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="torrentSearchStatus" class="text-muted mb-2"></div>
+                <div id="torrentSearchStatus" class="alert alert-info d-none mb-3 py-2 px-3" role="alert"></div>
                 <div class="table-responsive">
                     <table class="table table-sm table-striped align-middle">
                         <thead>
@@ -1291,6 +1291,7 @@
         const actionCell = $('<td></td>');
         const button = $('<button type="button" class="btn btn-sm btn-warning queue-download-btn"></button>');
         button.text(actionLabel);
+        button.attr('data-action-label', String(actionLabel || 'Queue'));
         button.attr('data-download-url', String(item?.download_url || ''));
         button.attr('data-title', String(item?.title || ''));
         button.attr('data-protocol', String(item?.protocol || ''));
@@ -1309,23 +1310,35 @@
             .addClass(`text-${tone}`);
     }
 
+    function setTorrentSearchStatus(message, tone = 'info') {
+        const status = $('#torrentSearchStatus');
+        if (!message) {
+            status.addClass('d-none').text('');
+            return;
+        }
+        status
+            .text(message)
+            .removeClass('d-none alert-info alert-success alert-warning alert-danger')
+            .addClass(`alert-${tone}`);
+    }
+
     function showTorrentSearchModal(statusMessage = 'Searching Prowlarr...') {
-        $('#torrentSearchStatus').text(statusMessage);
+        setTorrentSearchStatus(statusMessage, 'info');
         $('#torrentSearchResults').empty();
         bootstrap.Modal.getOrCreateInstance(document.getElementById('torrentSearchModal')).show();
     }
 
     function renderDownloadSearchResults(result, actionLabel, buildExtraData) {
         if (!result['success']) {
-            $('#torrentSearchStatus').text(result['message'] || 'Search failed.');
+            setTorrentSearchStatus(result['message'] || 'Search failed.', 'danger');
             return;
         }
         const results = result['results'] || [];
         if (!results.length) {
-            $('#torrentSearchStatus').text('No results found.');
+            setTorrentSearchStatus('No results found.', 'warning');
             return;
         }
-        $('#torrentSearchStatus').text(`Found ${results.length} results.`);
+        setTorrentSearchStatus(`Found ${results.length} results.`, 'info');
         results.forEach(item => {
             const row = buildDownloadSearchRow(item, actionLabel, buildExtraData(item));
             $('#torrentSearchResults').append(row);
@@ -1855,21 +1868,21 @@
                 if (!query) {
                     return;
                 }
-                $('#torrentSearchStatus').text('Searching Prowlarr...');
+                setTorrentSearchStatus('Searching Prowlarr...', 'info');
                 $('#torrentSearchResults').empty();
                 const modal = new bootstrap.Modal(document.getElementById('torrentSearchModal'));
                 modal.show();
                 $.getJSON(`/api/downloads/search?query=${encodeURIComponent(query)}&apply_settings=1`, function (result) {
                     if (!result['success']) {
-                        $('#torrentSearchStatus').text(result['message'] || 'Search failed.');
+                        setTorrentSearchStatus(result['message'] || 'Search failed.', 'danger');
                         return;
                     }
                     const results = result['results'] || [];
                     if (!results.length) {
-                        $('#torrentSearchStatus').text('No results found.');
+                        setTorrentSearchStatus('No results found.', 'warning');
                         return;
                     }
-                    $('#torrentSearchStatus').text(`Found ${results.length} results.`);
+                    setTorrentSearchStatus(`Found ${results.length} results.`, 'info');
                     results.forEach(item => {
                         const row = buildDownloadSearchRow(item, 'Queue');
                         $('#torrentSearchResults').append(row);
@@ -1879,17 +1892,21 @@
 
         $(document).on('click', '.queue-download-btn', function () {
             const button = $(this);
+            if (button.prop('disabled') || button.data('queued') === true) {
+                return;
+            }
             const downloadUrl = button.data('download-url');
             const title = button.data('title');
             const titleId = button.data('title-id');
             const protocol = button.data('protocol');
             const updateOnly = button.data('update-only') === true || button.data('update-only') === 'true';
             const expectedVersion = button.data('expected-version');
+            const originalLabel = String(button.attr('data-action-label') || button.text() || 'Queue');
             if (!downloadUrl) {
                 return;
             }
-            button.prop('disabled', true);
-            $('#torrentSearchStatus').text('Queuing download...');
+            button.prop('disabled', true).text('Queuing...');
+            setTorrentSearchStatus('Queuing download...', 'info');
             $.ajax({
                 url: "/api/downloads/queue",
                 type: 'POST',
@@ -1904,13 +1921,30 @@
                 contentType: "application/json",
                 success: function (result) {
                     const ok = result['success'];
-                        $('#torrentSearchStatus').text(result['message'] || (ok ? 'Queued download.' : 'Queue failed.'));
-                    },
-                    complete: function () {
+                    if (ok) {
+                        button
+                            .data('queued', true)
+                            .removeClass('btn-warning')
+                            .addClass('btn-success')
+                            .text('Queued')
+                            .prop('disabled', true);
+                        setTorrentSearchStatus(result['message'] || 'Download queued successfully.', 'success');
+                        return;
+                    }
+                    button.text(originalLabel);
+                    setTorrentSearchStatus(result['message'] || 'Queue failed.', 'danger');
+                },
+                error: function () {
+                    button.text(originalLabel);
+                    setTorrentSearchStatus('Queue failed.', 'danger');
+                },
+                complete: function () {
+                    if (button.data('queued') !== true) {
                         button.prop('disabled', false);
                     }
-                });
+                }
             });
+        });
         }
 
         // Close popovers
