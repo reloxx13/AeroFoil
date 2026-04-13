@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from app import settings
 from app import titles
+from app.constants import BUILTIN_TITLE_MANUAL_OVERRIDES
 
 
 class TitlesLanguagePreferenceTests(unittest.TestCase):
@@ -105,6 +106,166 @@ class TitlesLanguagePreferenceTests(unittest.TestCase):
         self.assertEqual(normalized['language'], 'ja')
         self.assertTrue(normalized['prefer_english_metadata'])
         self.assertEqual(normalized['manual_overrides'], {})
+
+    def test_normalize_titles_settings_merges_built_in_and_user_overrides(self):
+        normalized = settings._normalize_titles_settings({
+            'manual_overrides': {
+                '0100DEADBEEF0000': {
+                    'name': 'Example Custom Title',
+                },
+            },
+        })
+
+        self.assertEqual(normalized['manual_overrides'], {
+            '0100DEADBEEF0000': {
+                'name': 'Example Custom Title',
+                'description': '',
+                'iconUrl': '',
+                'bannerUrl': '',
+                'screenshots': [],
+            },
+        })
+        self.assertEqual(
+            normalized['effective_manual_overrides']['018FCC923D8D0000']['name'],
+            BUILTIN_TITLE_MANUAL_OVERRIDES['018FCC923D8D0000']['name'],
+        )
+        self.assertTrue(normalized['effective_manual_overrides']['018FCC923D8D0000']['description'])
+        self.assertTrue(normalized['effective_manual_overrides']['018FCC923D8D0000']['iconUrl'])
+        self.assertTrue(normalized['effective_manual_overrides']['018FCC923D8D0000']['bannerUrl'])
+        self.assertEqual(
+            normalized['effective_manual_overrides']['056783A0CC4A0000']['name'],
+            BUILTIN_TITLE_MANUAL_OVERRIDES['056783A0CC4A0000']['name'],
+        )
+        self.assertTrue(normalized['effective_manual_overrides']['056783A0CC4A0000']['description'])
+        self.assertTrue(normalized['effective_manual_overrides']['056783A0CC4A0000']['iconUrl'])
+        self.assertTrue(normalized['effective_manual_overrides']['056783A0CC4A0000']['bannerUrl'])
+        self.assertEqual(
+            normalized['effective_manual_overrides']['0500D22512158000']['name'],
+            BUILTIN_TITLE_MANUAL_OVERRIDES['0500D22512158000']['name'],
+        )
+        self.assertTrue(normalized['effective_manual_overrides']['0500D22512158000']['description'])
+        self.assertTrue(normalized['effective_manual_overrides']['0500D22512158000']['iconUrl'])
+        self.assertTrue(normalized['effective_manual_overrides']['0500D22512158000']['bannerUrl'])
+        self.assertEqual(
+            normalized['effective_manual_overrides']['010CAF78CF713000']['name'],
+            BUILTIN_TITLE_MANUAL_OVERRIDES['010CAF78CF713000']['name'],
+        )
+        self.assertTrue(normalized['effective_manual_overrides']['010CAF78CF713000']['description'])
+        self.assertTrue(normalized['effective_manual_overrides']['010CAF78CF713000']['iconUrl'])
+        self.assertTrue(normalized['effective_manual_overrides']['010CAF78CF713000']['bannerUrl'])
+        self.assertEqual(
+            normalized['effective_manual_overrides']['0100DEADBEEF0000']['name'],
+            'Example Custom Title',
+        )
+
+    def test_get_game_info_returns_built_in_override_for_unknown_simpsons_port(self):
+        title_id = '018FCC923D8D0000'
+
+        with patch(
+            'app.titles.load_settings',
+            return_value={'titles': {'manual_overrides': {}}},
+        ), patch(
+            'app.titles._get_title_info_from_index',
+            return_value=None,
+        ):
+            info = titles.get_game_info(title_id)
+
+        self.assertEqual(info['name'], 'The Simpsons: Hit & Run [Port]')
+        self.assertEqual(info['id'], f'{title_id} not found in titledb')
+        self.assertTrue(info['description'])
+        self.assertTrue(info['iconUrl'])
+        self.assertTrue(info['bannerUrl'])
+
+    def test_get_game_info_prefers_user_override_over_built_in_override(self):
+        title_id = '018FCC923D8D0000'
+
+        with patch(
+            'app.titles.load_settings',
+            return_value={
+                'titles': {
+                    'manual_overrides': {
+                        title_id: {
+                            'name': 'My Simpsons Port Name',
+                        },
+                    },
+                },
+            },
+        ), patch(
+            'app.titles._get_title_info_from_index',
+            return_value=None,
+        ):
+            info = titles.get_game_info(title_id)
+
+        self.assertEqual(info['name'], 'My Simpsons Port Name')
+
+    def test_get_game_info_returns_built_in_override_for_unknown_ship_of_harkinian_port(self):
+        title_id = '056783A0CC4A0000'
+
+        with patch(
+            'app.titles.load_settings',
+            return_value={'titles': {'manual_overrides': {}}},
+        ), patch(
+            'app.titles._get_title_info_from_index',
+            return_value=None,
+        ):
+            info = titles.get_game_info(title_id)
+
+        self.assertEqual(info['name'], 'Ship of Harkinian')
+        self.assertEqual(info['id'], f'{title_id} not found in titledb')
+        self.assertTrue(info['description'])
+        self.assertTrue(info['iconUrl'])
+        self.assertTrue(info['bannerUrl'])
+
+    def test_get_game_info_returns_built_in_override_for_unknown_sonic_dimensions_port(self):
+        title_id = '0500D22512158000'
+
+        with patch(
+            'app.titles.load_settings',
+            return_value={'titles': {'manual_overrides': {}}},
+        ), patch(
+            'app.titles._get_title_info_from_index',
+            return_value=None,
+        ):
+            info = titles.get_game_info(title_id)
+
+        self.assertEqual(info['name'], 'Sonic Dimensions')
+        self.assertEqual(info['id'], f'{title_id} not found in titledb')
+        self.assertTrue(info['description'])
+        self.assertTrue(info['iconUrl'])
+        self.assertTrue(info['bannerUrl'])
+
+    def test_get_game_info_returns_built_in_override_for_unknown_alttp_port(self):
+        title_id = '010CAF78CF713000'
+
+        with patch(
+            'app.titles.load_settings',
+            return_value={'titles': {'manual_overrides': {}}},
+        ), patch(
+            'app.titles._get_title_info_from_index',
+            return_value=None,
+        ):
+            info = titles.get_game_info(title_id)
+
+        self.assertEqual(info['name'], 'The Legend of Zelda - A Link to the Past')
+        self.assertEqual(info['id'], f'{title_id} not found in titledb')
+        self.assertTrue(info['description'])
+        self.assertTrue(info['iconUrl'])
+        self.assertTrue(info['bannerUrl'])
+
+    def test_get_game_info_leaves_other_unknown_titles_unrecognized(self):
+        title_id = '0BADF00D0BADF00D'
+
+        with patch(
+            'app.titles.load_settings',
+            return_value={'titles': {'manual_overrides': {}}},
+        ), patch(
+            'app.titles._get_title_info_from_index',
+            return_value=None,
+        ):
+            info = titles.get_game_info(title_id)
+
+        self.assertEqual(info['name'], 'Unrecognized')
+        self.assertEqual(info['id'], f'{title_id} not found in titledb')
 
 
 if __name__ == '__main__':

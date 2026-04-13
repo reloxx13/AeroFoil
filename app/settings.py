@@ -140,6 +140,17 @@ def _normalize_titles_manual_overrides(raw_overrides):
         }
     return out
 
+
+def _get_built_in_titles_manual_overrides():
+    return _normalize_titles_manual_overrides(BUILTIN_TITLE_MANUAL_OVERRIDES)
+
+
+def _merge_titles_manual_overrides(raw_overrides):
+    merged = _get_built_in_titles_manual_overrides()
+    merged.update(_normalize_titles_manual_overrides(raw_overrides))
+    return merged
+
+
 def _normalize_titles_settings(raw_titles):
     defaults = DEFAULT_SETTINGS.get('titles', {}) or {}
     merged = defaults.copy()
@@ -154,9 +165,9 @@ def _normalize_titles_settings(raw_titles):
         merged.get('prefer_english_metadata'),
         default=defaults.get('prefer_english_metadata', False),
     )
-    merged['manual_overrides'] = _normalize_titles_manual_overrides(
-        merged.get('manual_overrides')
-    )
+    user_overrides = _normalize_titles_manual_overrides(merged.get('manual_overrides'))
+    merged['manual_overrides'] = user_overrides
+    merged['effective_manual_overrides'] = _merge_titles_manual_overrides(user_overrides)
     return merged
 
 def _normalize_library_naming_templates(raw_templates):

@@ -161,6 +161,59 @@ DEFAULT_SETTINGS = {
     }
 }
 
+BUILTIN_TITLE_MANUAL_OVERRIDES = {
+    "018FCC923D8D0000": {
+        "name": "The Simpsons: Hit & Run [Port]",
+        "description": "Community port of The Simpsons: Hit & Run for Nintendo Switch. Requires the original Windows game files to run.",
+        "iconUrl": "https://static.simpsonswiki.com/images/5/5f/The_Simpsons_Hit_and_Run_cover.png",
+        "bannerUrl": "https://static.simpsonswiki.com/images/5/5f/The_Simpsons_Hit_and_Run_cover.png",
+        "screenshots": [],
+    },
+    "056783A0CC4A0000": {
+        "name": "Ship of Harkinian",
+        "description": "Open-source port of The Legend of Zelda: Ocarina of Time with modern enhancements for Nintendo Switch and other platforms.",
+        "iconUrl": "https://raw.githubusercontent.com/HarbourMasters/shipofharkinian.com/9c5639c054cb3bc952760758307473a3e425fd33/public/logo.png",
+        "bannerUrl": "https://raw.githubusercontent.com/HarbourMasters/shipofharkinian.com/9c5639c054cb3bc952760758307473a3e425fd33/public/splash_poster.jpg",
+        "screenshots": [],
+    },
+    "0500D22512158000": {
+        "name": "Sonic Dimensions",
+        "description": "Fan-made homebrew port of the 2D Sonic fangame Sonic Dimensions for Nintendo Switch.",
+        "iconUrl": "https://dlhb.gamebrew.org/switchhomebrews/images/SonicDimensionsSwitch-01.png",
+        "bannerUrl": "https://dlhb.gamebrew.org/switchhomebrews/images/SonicDimensionsSwitch-02.png",
+        "screenshots": [],
+    },
+    "010CAF78CF713000": {
+        "name": "The Legend of Zelda - A Link to the Past",
+        "description": "Community homebrew port of The Legend of Zelda: A Link to the Past for Nintendo Switch with quality-of-life and widescreen enhancements.",
+        "iconUrl": "https://dlhb.gamebrew.org/switchhomebrews/images/zeldalinktothepastnx2.png",
+        "bannerUrl": "https://dlhb.gamebrew.org/switchhomebrews/images/zeldalinktothepastnx3.png",
+        "screenshots": [],
+    },
+    # Unverified port candidates, add only after confirming the Switch NSP app ID:
+    # "TODO_APP_ID_2SHIP2HARKINIAN": {
+    #     "name": "2 Ship 2 Harkinian",
+    #     "description": "Community port of The Legend of Zelda: Majora's Mask for Nintendo Switch.",
+    #     "iconUrl": "https://github.com/user-attachments/assets/a12851e2-1eb7-428c-973c-86fdfad73dd3",
+    #     "bannerUrl": "https://github.com/user-attachments/assets/a12851e2-1eb7-428c-973c-86fdfad73dd3",
+    #     "screenshots": [],
+    # },
+    # "TODO_APP_ID_STARSHIP": {
+    #     "name": "Starship",
+    #     "description": "Community port of Star Fox 64 for Nintendo Switch.",
+    #     "iconUrl": "https://raw.githubusercontent.com/HarbourMasters/Starship/62eb5a198bc5a8806f8c1b43551cd689e929455e/logo.png",
+    #     "bannerUrl": "https://raw.githubusercontent.com/HarbourMasters/Starship/62eb5a198bc5a8806f8c1b43551cd689e929455e/nx-logo.jpg",
+    #     "screenshots": [],
+    # },
+    # "TODO_APP_ID_SUPER_METROID_SWITCH": {
+    #     "name": "Super Metroid Switch",
+    #     "description": "Community port of Super Metroid for Nintendo Switch.",
+    #     "iconUrl": "",
+    #     "bannerUrl": "",
+    #     "screenshots": [],
+    # },
+}
+
 TINFOIL_HEADERS = [
     'Theme',
     'Uid',

@@ -1263,7 +1263,20 @@ def identify_file(filepath):
 def _get_manual_title_override(title_id):
     try:
         settings = load_settings()
-        overrides = (settings.get('titles') or {}).get('manual_overrides') or {}
+        title_settings = settings.get('titles') or {}
+        overrides = title_settings.get('effective_manual_overrides')
+        if not isinstance(overrides, dict):
+            overrides = {}
+            for raw_overrides in (
+                BUILTIN_TITLE_MANUAL_OVERRIDES,
+                title_settings.get('manual_overrides') or {},
+            ):
+                if not isinstance(raw_overrides, dict):
+                    continue
+                for key, value in raw_overrides.items():
+                    normalized_key = str(key or '').strip().upper()
+                    if normalized_key and isinstance(value, dict):
+                        overrides[normalized_key] = value
         return overrides.get(str(title_id or '').strip().upper()) or {}
     except Exception:
         return {}
